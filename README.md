@@ -13,6 +13,14 @@ Many people track expenses manually or not at all, making it hard to understand 
 - Multi-currency support (LBP / USD)
 - (Later) AI-based budgeting suggestions
 
+# Team Leader
+- Elena Zoghby
+# Team Members
+- Hawraa Sleiman
+- Rawan Issa
+- George Al Achkar
+- Mena Elsayed
+
 # Tech Stack
 - Frontend: Next.js (React)
 - Backend: Node.js (API routes / Express)
