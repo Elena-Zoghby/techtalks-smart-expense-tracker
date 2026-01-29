@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -22,5 +23,19 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "Smart Expense Tracker is a full-stack web application that helps users track their daily expenses, categorize spending, and visualize their financial habits through charts and monthly reports.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Elena-Zoghby/techtalks-smart-expense-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Elena-Zoghby/techtalks-smart-expense-tracker/issues"
+  },
+  "homepage": "https://github.com/Elena-Zoghby/techtalks-smart-expense-tracker#readme"
 }
