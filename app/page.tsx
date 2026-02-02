@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 
 type Expense = {
+  id: number;
   title: string;
   amount: number;
   date: string;
+  description?: string;
 };
 
 export default function Home() {
@@ -54,7 +56,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Failed to add expense");
 
       const savedExpense = await res.json();
-      setExpenses([...expenses, savedExpense]);
+      setExpenses(prev => [...prev, savedExpense]);
 
       // Clear input fields
       setTitle("");
@@ -98,7 +100,8 @@ export default function Home() {
           />
           <button
             onClick={handleAddExpense}
-            className="bg-black text-white p-2 rounded hover:bg-gray-800"
+            disabled={loading}
+            className={`p-2 rounded text-white ${loading ? "bg-gray-400" : "bg-black hover:bg-gray-800"}`}
           >
             Add Expense
           </button>
@@ -116,7 +119,7 @@ export default function Home() {
             <ul className="flex flex-col gap-2">
               {expenses.map((expense) => (
                 <li
-                  key={expense.title + expense.date + expense.amount}
+                  key={expense.id}
                   className="flex justify-between items-center border p-2 rounded"
                 >
                   <span className="font-medium">{expense.title}</span>
