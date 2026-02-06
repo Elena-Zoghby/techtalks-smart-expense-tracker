@@ -1,42 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Expense = {
+  id: number;
   title: string;
   amount: number;
   date: string;
+  description?: string;
+  category: string;
 };
 
 export default function Home() {
-  // Mock initial data
-  const [expenses, setExpenses] = useState<Expense[]>([
-    { title: "Lunch", amount: 10, date: "2026-01-28" },
-    { title: "Taxi", amount: 5, date: "2026-01-27" },
-  ]);
-
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Food"); // default value
 
-  const handleAddExpense = () => {
+  // Fetch existing expenses from backend on load
+  useEffect(() => {
+    fetch("/api/expenses")
+      .then((res) => res.json())
+      .then((data: Expense[]) => setExpenses(data))
+      .catch((err) => console.error("Error fetching expenses:", err));
+  }, []);
+
+  // Add new expense
+  const handleAddExpense = async () => {
     if (!title || !amount || !date) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields");
       return;
     }
 
-    const newExpense: Expense = {
+    const newExpense = {
       title,
       amount: Number(amount),
       date,
+      description,
+      category,
     };
 
-    setExpenses([...expenses, newExpense]);
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newExpense),
+      });
 
-    // Clear input fields
-    setTitle("");
-    setAmount("");
-    setDate("");
+      if (!res.ok) {
+        const error = await res.json();
+        alert("Error: " + error.message);
+        return;
+      }
+
+      const savedExpense: Expense = await res.json();
+      setExpenses([...expenses, savedExpense]);
+
+      // Clear input fields
+      setTitle("");
+      setAmount("");
+      setDate("");
+      setDescription("");
+      setCategory("Food");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add expense");
+    }
   };
 
   return (
@@ -74,6 +105,28 @@ export default function Home() {
             className="border p-2 rounded"
           />
 
+          <input
+            type="text"
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="border p-2 rounded"
+          />
+
+          {/* Category Dropdown */}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="border p-2 rounded"
+          >
+            <option>Food</option>
+            <option>Transport</option>
+            <option>Bills</option>
+            <option>Entertainment</option>
+            <option>Shopping</option>
+            <option>Other</option>
+          </select>
+
           <button
             onClick={handleAddExpense}
             className="bg-black text-white p-2 rounded hover:bg-gray-800"
@@ -91,12 +144,15 @@ export default function Home() {
             <p className="text-gray-500">No expenses added yet.</p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {expenses.map((expense, index) => (
+              {expenses.map((expense) => (
                 <li
-                  key={index}
+                  key={expense.id}
                   className="flex justify-between items-center border p-2 rounded"
                 >
-                  <span className="font-medium">{expense.title}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{expense.title}</span>
+                    <span className="text-gray-500 text-sm">{expense.category}</span>
+                  </div>
                   <span>${expense.amount}</span>
                   <span className="text-gray-500">{expense.date}</span>
                 </li>
