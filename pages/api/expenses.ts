@@ -9,7 +9,7 @@ type Expense = {
   category: "Food" | "Transport" | "Bills" | "Entertainment" | "Shopping" | "Other";
 };
 
-let expenses: Expense[] = [];
+export let expenses: Expense[] = [];
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {

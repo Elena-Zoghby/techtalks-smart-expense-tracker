@@ -17,15 +17,16 @@ export default function Home() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Food"); // default value
+  const [category, setCategory] = useState("Food");
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<Expense | null>(null);
 
-  // Fetch expenses from backend on page load
+  // Fetch expenses on page load
   useEffect(() => {
     const fetchExpenses = async () => {
       setLoading(true);
       try {
-        const res = await fetch("http://localhost:3001/expenses");
+        const res = await fetch("/api/expenses");
         if (!res.ok) throw new Error("Failed to fetch expenses");
         const data = await res.json();
         setExpenses(data);
@@ -36,10 +37,10 @@ export default function Home() {
         setLoading(false);
       }
     };
-
     fetchExpenses();
   }, []);
 
+  // Add new expense
   const handleAddExpense = async () => {
     if (!title || !amount || !date) {
       alert("Please fill all required fields");
@@ -55,7 +56,7 @@ export default function Home() {
     };
 
     try {
-      const res = await fetch("http://localhost:3001/expenses", {
+      const res = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newExpense),
@@ -70,7 +71,6 @@ export default function Home() {
       const savedExpense: Expense = await res.json();
       setExpenses([...expenses, savedExpense]);
 
-      // Clear input fields
       setTitle("");
       setAmount("");
       setDate("");
@@ -82,14 +82,53 @@ export default function Home() {
     }
   };
 
+  // Delete expense
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+
+      setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+    } catch (err: any) {
+      console.error(err.message);
+      alert("Failed to delete expense");
+    }
+  };
+
+  // Update expense
+  const handleUpdate = async () => {
+    if (!editing) return;
+
+    try {
+      const res = await fetch(`/api/expenses/${editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editing),
+      });
+
+      if (!res.ok) throw new Error("Failed to update");
+
+      const updatedExpense = await res.json();
+      setExpenses((prev) =>
+        prev.map((exp) => (exp.id === updatedExpense.id ? updatedExpense : exp))
+      );
+
+      setEditing(null);
+    } catch (err: any) {
+      console.error(err.message);
+      alert("Failed to update expense");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow">
-        <h1 className="text-2xl font-semibold mb-4 text-center">
+        <h1 className="text-2xl font-semibold mb-4 text-center text-black">
           Smart Expense Tracker
         </h1>
 
-        <div className="flex flex-col gap-3 mb-6">
+        {/* Add Expense Form */}
+        <div className="flex flex-col gap-3 mb-6 text-black">
           <input
             type="text"
             placeholder="Expense Title"
@@ -110,7 +149,6 @@ export default function Home() {
             onChange={(e) => setDate(e.target.value)}
             className="border p-2 rounded"
           />
-
           <input
             type="text"
             placeholder="Description (optional)"
@@ -118,7 +156,6 @@ export default function Home() {
             onChange={(e) => setDescription(e.target.value)}
             className="border p-2 rounded"
           />
-
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -131,7 +168,6 @@ export default function Home() {
             <option>Shopping</option>
             <option>Other</option>
           </select>
-
           <button
             onClick={handleAddExpense}
             disabled={loading}
@@ -143,8 +179,9 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Expense List */}
         <div>
-          <h2 className="text-lg font-medium mb-3">Expense List</h2>
+          <h2 className="text-lg font-medium mb-3 text-black">Expense List</h2>
 
           {loading ? (
             <p className="text-gray-500">Loading...</p>
@@ -158,18 +195,96 @@ export default function Home() {
                   className="flex justify-between items-center border p-2 rounded"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium">{expense.title}</span>
-                    <span className="text-gray-500 text-sm">
-                      {expense.category}
-                    </span>
+                    <span className="font-medium text-black">{expense.title}</span>
+                    <span className="text-gray-500 text-sm">{expense.category}</span>
                   </div>
                   <span>${expense.amount}</span>
                   <span className="text-gray-500">{expense.date}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setEditing(expense)}
+                      className="bg-gray-200 text-black p-2 mr-1 rounded cursor-pointer hover:bg-black hover:text-white transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="bg-gray-200 text-black p-2 rounded cursor-pointer hover:bg-black hover:text-white transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        {/* Edit Expense Form */}
+        {editing && (
+          <div className="mt-4 p-2 border rounded bg-gray-50">
+            <h3 className="font-medium text-black mb-2">Edit Expense</h3>
+            <input
+              type="text"
+              placeholder="Title"
+              value={editing.title}
+              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+              className="border p-2 rounded mb-2 w-full text-black"
+            />
+            <input
+              type="number"
+              placeholder="Amount"
+              value={editing.amount}
+              onChange={(e) =>
+                setEditing({ ...editing, amount: Number(e.target.value) })
+              }
+              className="border p-2 rounded mb-2 w-full text-black"
+            />
+            <input
+              type="date"
+              value={editing.date}
+              onChange={(e) => setEditing({ ...editing, date: e.target.value })}
+              className="border p-2 rounded mb-2 w-full text-black"
+            />
+            <input
+              type="text"
+              placeholder="Description"
+              value={editing.description || ""}
+              onChange={(e) =>
+                setEditing({ ...editing, description: e.target.value })
+              }
+              className="border p-2 rounded mb-2 w-full text-black"
+            />
+            <select
+              value={editing.category}
+              onChange={(e) =>
+                setEditing({ ...editing, category: e.target.value })
+              }
+              className="border p-2 rounded mb-2 w-full text-black"
+            >
+              <option>Food</option>
+              <option>Transport</option>
+              <option>Bills</option>
+              <option>Entertainment</option>
+              <option>Shopping</option>
+              <option>Other</option>
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={handleUpdate}
+                className="bg-gray-200 text-black p-2 rounded cursor-pointer hover:bg-black hover:text-white transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(null)}
+                className="bg-gray-200 text-black p-2 rounded cursor-pointer hover:bg-black hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
