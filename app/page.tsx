@@ -8,6 +8,7 @@ type Expense = {
   amount: number;
   date: string;
   description?: string;
+  category: string;
 };
 
 export default function Home() {
@@ -15,6 +16,8 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Food"); // default value
   const [loading, setLoading] = useState(false);
 
   // Fetch expenses from backend on page load
@@ -37,14 +40,19 @@ export default function Home() {
     fetchExpenses();
   }, []);
 
-  // Handle submitting new expense to backend
   const handleAddExpense = async () => {
     if (!title || !amount || !date) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields");
       return;
     }
 
-    const newExpense = { title, amount: Number(amount), date };
+    const newExpense = {
+      title,
+      amount: Number(amount),
+      date,
+      description,
+      category,
+    };
 
     try {
       const res = await fetch("http://localhost:3001/expenses", {
@@ -53,15 +61,21 @@ export default function Home() {
         body: JSON.stringify(newExpense),
       });
 
-      if (!res.ok) throw new Error("Failed to add expense");
+      if (!res.ok) {
+        const error = await res.json();
+        alert("Error: " + error.message);
+        return;
+      }
 
-      const savedExpense = await res.json();
-      setExpenses(prev => [...prev, savedExpense]);
+      const savedExpense: Expense = await res.json();
+      setExpenses([...expenses, savedExpense]);
 
       // Clear input fields
       setTitle("");
       setAmount("");
       setDate("");
+      setDescription("");
+      setCategory("Food");
     } catch (err: any) {
       console.error(err.message);
       alert("Failed to add expense");
@@ -71,12 +85,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow">
-        {/* Page Title */}
         <h1 className="text-2xl font-semibold mb-4 text-center">
           Smart Expense Tracker
         </h1>
 
-        {/* Expense Form */}
         <div className="flex flex-col gap-3 mb-6">
           <input
             type="text"
@@ -98,16 +110,39 @@ export default function Home() {
             onChange={(e) => setDate(e.target.value)}
             className="border p-2 rounded"
           />
+
+          <input
+            type="text"
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="border p-2 rounded"
+          />
+
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="border p-2 rounded"
+          >
+            <option>Food</option>
+            <option>Transport</option>
+            <option>Bills</option>
+            <option>Entertainment</option>
+            <option>Shopping</option>
+            <option>Other</option>
+          </select>
+
           <button
             onClick={handleAddExpense}
             disabled={loading}
-            className={`p-2 rounded text-white ${loading ? "bg-gray-400" : "bg-black hover:bg-gray-800"}`}
+            className={`p-2 rounded text-white ${
+              loading ? "bg-gray-400" : "bg-black hover:bg-gray-800"
+            }`}
           >
             Add Expense
           </button>
         </div>
 
-        {/* Expense List */}
         <div>
           <h2 className="text-lg font-medium mb-3">Expense List</h2>
 
@@ -122,7 +157,12 @@ export default function Home() {
                   key={expense.id}
                   className="flex justify-between items-center border p-2 rounded"
                 >
-                  <span className="font-medium">{expense.title}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{expense.title}</span>
+                    <span className="text-gray-500 text-sm">
+                      {expense.category}
+                    </span>
+                  </div>
                   <span>${expense.amount}</span>
                   <span className="text-gray-500">{expense.date}</span>
                 </li>
