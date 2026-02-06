@@ -18,16 +18,28 @@ export default function Home() {
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food"); // default value
+  const [loading, setLoading] = useState(false);
 
-  // Fetch existing expenses from backend on load
+  // Fetch expenses from backend on page load
   useEffect(() => {
-    fetch("/api/expenses")
-      .then((res) => res.json())
-      .then((data: Expense[]) => setExpenses(data))
-      .catch((err) => console.error("Error fetching expenses:", err));
+    const fetchExpenses = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("http://localhost:3001/expenses");
+        if (!res.ok) throw new Error("Failed to fetch expenses");
+        const data = await res.json();
+        setExpenses(data);
+      } catch (err: any) {
+        console.error(err.message);
+        alert("Failed to load expenses");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpenses();
   }, []);
 
-  // Add new expense
   const handleAddExpense = async () => {
     if (!title || !amount || !date) {
       alert("Please fill all required fields");
@@ -43,7 +55,7 @@ export default function Home() {
     };
 
     try {
-      const res = await fetch("/api/expenses", {
+      const res = await fetch("http://localhost:3001/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newExpense),
@@ -64,8 +76,8 @@ export default function Home() {
       setDate("");
       setDescription("");
       setCategory("Food");
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error(err.message);
       alert("Failed to add expense");
     }
   };
@@ -73,15 +85,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow">
-
-        {/* Page Title */}
         <h1 className="text-2xl font-semibold mb-4 text-center">
           Smart Expense Tracker
         </h1>
 
-        {/* Expense Form */}
         <div className="flex flex-col gap-3 mb-6">
-
           <input
             type="text"
             placeholder="Expense Title"
@@ -89,7 +97,6 @@ export default function Home() {
             onChange={(e) => setTitle(e.target.value)}
             className="border p-2 rounded"
           />
-
           <input
             type="number"
             placeholder="Amount"
@@ -97,7 +104,6 @@ export default function Home() {
             onChange={(e) => setAmount(e.target.value)}
             className="border p-2 rounded"
           />
-
           <input
             type="date"
             value={date}
@@ -113,7 +119,6 @@ export default function Home() {
             className="border p-2 rounded"
           />
 
-          {/* Category Dropdown */}
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -129,18 +134,21 @@ export default function Home() {
 
           <button
             onClick={handleAddExpense}
-            className="bg-black text-white p-2 rounded hover:bg-gray-800"
+            disabled={loading}
+            className={`p-2 rounded text-white ${
+              loading ? "bg-gray-400" : "bg-black hover:bg-gray-800"
+            }`}
           >
             Add Expense
           </button>
-
         </div>
 
-        {/* Expense List */}
         <div>
           <h2 className="text-lg font-medium mb-3">Expense List</h2>
 
-          {expenses.length === 0 ? (
+          {loading ? (
+            <p className="text-gray-500">Loading...</p>
+          ) : expenses.length === 0 ? (
             <p className="text-gray-500">No expenses added yet.</p>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -151,7 +159,9 @@ export default function Home() {
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{expense.title}</span>
-                    <span className="text-gray-500 text-sm">{expense.category}</span>
+                    <span className="text-gray-500 text-sm">
+                      {expense.category}
+                    </span>
                   </div>
                   <span>${expense.amount}</span>
                   <span className="text-gray-500">{expense.date}</span>
@@ -160,7 +170,6 @@ export default function Home() {
             </ul>
           )}
         </div>
-
       </main>
     </div>
   );
