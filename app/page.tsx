@@ -22,7 +22,7 @@ export default function Home() {
     const fetchExpenses = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/expenses");
+        const res = await fetch("http://localhost:3001/expenses");
         if (!res.ok) throw new Error("Failed to fetch expenses");
         const data = await res.json();
         setExpenses(data);
@@ -47,7 +47,7 @@ export default function Home() {
     const newExpense = { title, amount: Number(amount), date };
 
     try {
-      const res = await fetch("/api/expenses", {
+      const res = await fetch("http://localhost:3001/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newExpense),
