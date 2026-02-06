@@ -15,7 +15,6 @@ app.use(cors({
 
 const port = 3001;
 
-// This line ensures the code finds the .env file in the folder ABOVE 'backend'
 import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' }); 
 
@@ -71,7 +70,7 @@ app.post('/expenses', async (req, res) => {
     const saved = await expense.save();
 
 res.status(201).json({
-  id: saved._id,       // <-- frontend can use id
+  id: saved._id,
   title: saved.title,
   amount: saved.amount,
   date: saved.date,
