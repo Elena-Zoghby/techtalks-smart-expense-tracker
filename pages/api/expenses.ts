@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-type Expense = {
-  id: number;
+// Change id to string for MongoDB-style IDs
+export type Expense = {
+  id: string;
   title: string;
   amount: number;
   date: string;
@@ -9,6 +10,7 @@ type Expense = {
   category: "Food" | "Transport" | "Bills" | "Entertainment" | "Shopping" | "Other";
 };
 
+// Simulated database
 export let expenses: Expense[] = [];
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -17,29 +19,25 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   } else if (req.method === "POST") {
     const { title, amount, date, description, category } = req.body;
 
-    // Validate required fields
     if (!title || amount === undefined || !date || !category) {
       return res.status(400).json({ message: "Missing fields" });
     }
 
-    // Validate amount
     if (typeof amount !== "number" || isNaN(amount)) {
       return res.status(400).json({ message: "Amount must be a number" });
     }
 
-    // Validate date
     if (isNaN(Date.parse(date))) {
       return res.status(400).json({ message: "Invalid date" });
     }
 
-    // Validate category
     const validCategories = ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Other"];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ message: "Invalid category" });
     }
 
     const newExpense: Expense = {
-      id: expenses.length + 1,
+      id: crypto.randomUUID(), // generate string ID
       title,
       amount,
       date,

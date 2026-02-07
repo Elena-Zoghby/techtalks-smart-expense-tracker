@@ -84,6 +84,79 @@ res.status(201).json({
   }
 });
 
+app.put('/expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, amount, date, description, category } = req.body;
+
+    if (!title || !amount || !date || !category) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid expense ID format" });
+    }
+
+    const updatedExpense = await Expense.findByIdAndUpdate(
+      id,
+      {
+        title,
+        amount: Number(amount),
+        date: new Date(date),
+        description: description || '',
+        category,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedExpense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    console.log('Update successful:', updatedExpense);
+
+    res.json({
+      id: updatedExpense._id,
+      title: updatedExpense.title,
+      amount: updatedExpense.amount,
+      date: updatedExpense.date,
+      description: updatedExpense.description,
+      category: updatedExpense.category,
+      createdAt: updatedExpense.createdAt,
+      updatedAt: updatedExpense.updatedAt
+    });
+
+  } catch (err) {
+    console.error('Update error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('🗑️ Delete request for ID:', id);
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid expense ID format" });
+    }
+
+    const deletedExpense = await Expense.findByIdAndDelete(id);
+
+    if (!deletedExpense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    console.log('Delete successful:', deletedExpense);
+    res.json({ message: "Expense deleted successfully", id: deletedExpense._id });
+
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`🚀 Server is live at http://localhost:${port}`);
