@@ -53,7 +53,7 @@ export default function Home() {
   // Add expense
   const handleAddExpense = async () => {
     if (!title || !amount || !date) return alert("Fill all required fields");
-
+    if(Number(amount) <= 0) return alert("Amount must be positive");
     const newExpense = { title, amount: Number(amount), date, description, category };
 
     try {
