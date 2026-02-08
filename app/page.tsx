@@ -74,7 +74,9 @@ export default function Home() {
 
   const handleUpdate = async () => {
     if (!editing) return;
-
+    if (editing.amount <= 0) {
+    return alert("Amount must be greater than 0");
+  }
     try {
       const res = await fetch(`http://localhost:3001/expenses/${editing.id}`, {
         method: "PUT",
@@ -119,7 +121,7 @@ export default function Home() {
         {/* Add Form */}
         <div className="flex flex-col gap-3 mb-6 text-black">
           <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="border p-2 rounded" />
-          <input type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2 rounded" />
+          <input type="number" min="0.01" step="0.01" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2 rounded" />
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded" />
           <input type="text" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="border p-2 rounded" />
           <select value={category} onChange={e => setCategory(e.target.value)} className="border p-2 rounded">
@@ -155,7 +157,7 @@ export default function Home() {
         {editing && (
           <div className="mt-4 p-2 border rounded bg-gray-50">
             <input value={editing.title} onChange={e => setEditing({...editing, title: e.target.value})} className="border p-2 rounded mb-2 w-full" />
-            <input type="number" value={editing.amount} onChange={e => setEditing({...editing, amount: Number(e.target.value)})} className="border p-2 rounded mb-2 w-full" />
+            <input type="number" min="0.01" step="0.01" placeholder="Amount" value={editing.amount} onChange={e => setEditing({...editing, amount: Number(e.target.value)})} className="border p-2 rounded mb-2 w-full" />
             <input type="date" value={editing.date.split("T")[0]} onChange={e => setEditing({...editing, date: e.target.value})} className="border p-2 rounded mb-2 w-full" />
             <button onClick={handleUpdate} className="bg-black text-white p-2 rounded w-full">Save</button>
           </div>
