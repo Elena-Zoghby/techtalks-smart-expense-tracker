@@ -21,6 +21,9 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [error, setError] = useState("");
+  const [budget, setBudget] = useState<number | null>(null);
+  const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
+  const [budgetInput, setBudgetInput] = useState("");
 
   // Fetch expenses
   useEffect(() => {
@@ -40,6 +43,52 @@ export default function Home() {
     fetchExpenses();
   }, []);
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/expenses/stats");
+        if (!res.ok) throw new Error("Failed to fetch stats");
+        const data = await res.json();
+        setBudget(data.budget);
+        setRemainingBudget(data.remainingBudget);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchStats();
+  }, [expenses]);
+
+  const handleBudget = async(e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!budgetInput || Number(budgetInput) <= 0) return;
+
+    try {
+
+      let res = await fetch("http://localhost:3001/api/budget", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(budgetInput) }),
+      });
+
+      if (res.status === 404) {
+
+        res = await fetch("http://localhost:3001/api/budget", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: Number(budgetInput) }),
+        });
+      }
+
+      const data = await res.json();
+      setBudget(data.amount);
+      setRemainingBudget(data.amount - monthlyTotal);
+      setBudgetInput("");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   // ===== SUMMARY CALCULATIONS =====
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -52,6 +101,12 @@ export default function Home() {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     })
     .reduce((sum, exp) => sum + exp.amount, 0);
+
+  useEffect(() => {
+    if (budget !== null) {
+      setRemainingBudget(budget - monthlyTotal);
+    }
+  }, [monthlyTotal, budget]);
 
   // Add expense
   const handleAddExpense = async () => {
@@ -128,6 +183,28 @@ export default function Home() {
         <div className="mb-6 p-4 bg-gray-100 rounded">
           <p className="font-medium">Total Spending: ${totalExpenses.toFixed(2)}</p>
           <p className="font-medium">This Month: ${monthlyTotal.toFixed(2)}</p>
+        </div>
+
+        {/* BUDGET */}
+        <div className="mb-4 p-4 bg-gray-100 rounded">
+          <h2 className="font-medium mb-2">Monthly Budget</h2>
+          <form
+            onSubmit={(e)=>handleBudget(e)}
+            className="flex gap-2"
+          >
+            <input
+              type="number"
+              placeholder="Set budget"
+              value={budgetInput}
+              onChange={(e) => setBudgetInput(e.target.value)}
+              className="border p-2 mb-2 rounded flex-1"
+            />
+            <button type="submit" className="bg-black text-white px-4 mb-2 rounded">
+              Save
+            </button>
+          </form>
+          {budget !== null && <p className="mt-1 text-sm">Current Budget: ${budget}</p>}
+          {remainingBudget !== null && <p className="mt-1 text-sm">Remaining: ${remainingBudget}</p>}
         </div>
 
         {/* Form */}

@@ -1,4 +1,5 @@
 import Expense from "./models/expense.js";
+import Budget from "./models/budget.js";
 import 'dotenv/config'; 
 import mongoose from 'mongoose';
 import express from 'express';
@@ -20,7 +21,6 @@ dotenv.config({ path: '../.env' });
 
 const mongoURI = process.env.MONGO_URI;
 
-// Check if the URI is actually there before trying to connect
 if (!mongoURI) {
   console.error("❌ ERROR: MONGODB_URI is not defined in your .env file!");
 } else {
@@ -36,7 +36,6 @@ app.get('/expenses', async (req, res) => {
   try {
     const expenses = await Expense.find().sort({ date: -1 });
 
-// map _id → id for frontend
 const responseData = expenses.map(exp => ({
   id: exp._id, 
   title: exp.title,
@@ -157,6 +156,114 @@ app.delete('/expenses/:id', async (req, res) => {
   }
 });
 
+// Budget
+
+app.get("/api/budget", async (req, res) => {
+  try {
+    const month = new Date().toISOString().slice(0, 7);
+    const budget = await Budget.findOne({ month });
+    res.json(budget);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/budget", async (req, res) => {
+  try {
+    const month = new Date().toISOString().slice(0, 7);
+
+    const existing = await Budget.findOne({ month });
+    if (existing) {
+      return res.status(400).json({ message: "Budget already exists for this month" });
+    }
+
+    const amount = Number(req.body.amount);
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid budget amount" });
+    }
+
+    const budget = new Budget({
+      month,
+      amount: amount,
+    });
+
+    await budget.save();
+    res.status(201).json(budget);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put("/api/budget", async (req, res) => {
+  try {
+    const month = new Date().toISOString().slice(0, 7);
+    const amount = Number(req.body.amount);
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid budget amount" });
+    }
+
+    const updated = await Budget.findOneAndUpdate(
+      { month },
+      { amount },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "No budget found for this month" });
+    }
+
+    res.json(updated);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/expenses/stats", async (req, res) => {
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const endOfMonth = new Date(startOfMonth);
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+
+    const expenses = await Expense.find({
+      date: { $gte: startOfMonth, $lt: endOfMonth },
+    });
+
+    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    const expensesCount = expenses.length;
+
+    const categoryTotals = {};
+    expenses.forEach(exp => {
+      if (categoryTotals[exp.category]) {
+        categoryTotals[exp.category] += exp.amount;
+      } else {
+        categoryTotals[exp.category] = exp.amount;
+      }
+    });
+
+    const month = new Date().toISOString().slice(0, 7);
+    const budget = await Budget.findOne({ month });
+
+    const remainingBudget = budget ? budget.amount - totalSpent : null;
+
+    res.json({
+      totalSpent,
+      remainingBudget,
+      expensesCount,
+      categoryTotals,
+      budget: budget ? budget.amount : null
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 app.listen(port, () => {
   console.log(`🚀 Server is live at http://localhost:${port}`);
