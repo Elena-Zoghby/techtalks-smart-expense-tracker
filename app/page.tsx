@@ -61,7 +61,11 @@ export default function Home() {
 
   const handleBudget = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!budgetInput || Number(budgetInput) <= 0) return;
+    if (!budgetInput || Number(budgetInput) <= 0) 
+      {
+        alert("Please enter a valid budget amount");
+        return;
+      }
 
     try {
 
@@ -83,6 +87,7 @@ export default function Home() {
       const data = await res.json();
       setBudget(data.amount);
       setRemainingBudget(data.amount - monthlyTotal);
+      if(Number(data.amount - monthlyTotal) < 0) alert("Warning: Your expenses have exceeded your budget!"); 
       setBudgetInput("");
     } catch (err) {
       console.error(err);
