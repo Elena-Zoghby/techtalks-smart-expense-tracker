@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 
 type Expense = {
   id: string;
@@ -10,6 +11,10 @@ type Expense = {
   category: string;
 };
 
+const categories = ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Other"];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AA00FF", "#FF3366"];
+const BASE_URL = "http://localhost:3001";
+
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [title, setTitle] = useState("");
@@ -17,186 +22,164 @@ export default function Home() {
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food");
-  const [isFetching, setIsFetching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
-  const [error, setError] = useState("");
-  const [budget, setBudget] = useState<number | null>(null);
-  const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
+
+  const [budget, setBudget] = useState<number | null>(0);
+  const [remainingBudget, setRemainingBudget] = useState<number | null>(0);
   const [budgetInput, setBudgetInput] = useState("");
 
   // Fetch expenses
   useEffect(() => {
     const fetchExpenses = async () => {
-      setIsFetching(true);
       try {
-        const res = await fetch("http://localhost:3001/expenses");
+        const res = await fetch(`${BASE_URL}/expenses`);
         if (!res.ok) throw new Error("Failed to fetch expenses");
         const data = await res.json();
         setExpenses(data);
-      } catch (err: any) {
-        setError("Failed to load expenses. Please refresh the page.");
-      } finally {
-        setIsFetching(false);
+      } catch (err) {
+        console.error(err);
       }
     };
     fetchExpenses();
   }, []);
 
+  // Fetch budget & stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/expenses/stats");
+        const res = await fetch(`${BASE_URL}/api/expenses/stats`);
         if (!res.ok) throw new Error("Failed to fetch stats");
         const data = await res.json();
-        setBudget(data.budget);
-        setRemainingBudget(data.remainingBudget);
+        setBudget(data.budget || 0);
+        setRemainingBudget(data.remainingBudget || 0);
       } catch (err) {
         console.error(err);
       }
     };
-
     fetchStats();
   }, [expenses]);
 
-  const handleBudget = async(e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!budgetInput || Number(budgetInput) <= 0) 
-      {
-        alert("Please enter a valid budget amount");
-        return;
-      }
+  // Pie chart data
+  const chartData = categories.map((cat) => ({
+    name: cat,
+    value: expenses.filter((e) => e.category === cat).reduce((sum, e) => sum + e.amount, 0),
+  }));
 
-    try {
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-      let res = await fetch("http://localhost:3001/api/budget", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(budgetInput) }),
-      });
-
-      if (res.status === 404) {
-
-        res = await fetch("http://localhost:3001/api/budget", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Number(budgetInput) }),
-        });
-      }
-
-      const data = await res.json();
-      setBudget(data.amount);
-      setRemainingBudget(data.amount - monthlyTotal);
-      if(Number(data.amount - monthlyTotal) < 0) alert("Warning: Your expenses have exceeded your budget!"); 
-      setBudgetInput("");
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  // ===== SUMMARY CALCULATIONS =====
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-
-  const monthlyTotal = expenses
-    .filter(exp => {
-      const d = new Date(exp.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    })
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
+  // Pre-fill form when editing
   useEffect(() => {
-    if (budget !== null) {
-      setRemainingBudget(budget - monthlyTotal);
+    if (editing) {
+      setTitle(editing.title);
+      setAmount(String(editing.amount));
+      setDate(editing.date.split("T")[0]);
+      setDescription(editing.description || "");
+      setCategory(editing.category);
     }
-  }, [monthlyTotal, budget]);
+  }, [editing]);
 
-  // Add expense
+  // Add / Update Expense
   const handleAddExpense = async () => {
-    setError("");
-    if (!title || !amount || !date) return setError("Fill all required fields");
-    if (Number(amount) <= 0) return setError("Amount must be positive");
-
-    const selectedDate = new Date(date);
-    const today = new Date();
-    selectedDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    if (selectedDate > today) return setError("Date cannot be in the future");
+    if (!title || !amount || !date) return alert("Fill all required fields");
+    if (Number(amount) <= 0) return alert("Amount must be positive");
 
     setIsSubmitting(true);
-    const newExpense = { title, amount: Number(amount), date, description, category };
-
     try {
-      const res = await fetch("http://localhost:3001/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newExpense),
-      });
+      if (editing) {
+        const res = await fetch(`${BASE_URL}/expenses/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            amount: Number(amount),
+            date,
+            description,
+            category,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to update expense");
+        const updated = await res.json();
+        setExpenses((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+        setEditing(null);
+      } else {
+        const res = await fetch(`${BASE_URL}/expenses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, amount: Number(amount), date, description, category }),
+        });
+        if (!res.ok) throw new Error("Failed to add expense");
+        const newExp = await res.json();
+        setExpenses((prev) => [...prev, newExp]);
+      }
 
-      if (!res.ok) throw new Error("Failed to add expense");
-
-      const savedExpense = await res.json();
-      setExpenses((prev) => [...prev, savedExpense]);
-      setTitle(""); setAmount(""); setDate(""); setDescription(""); setCategory("Food");
-    } catch {
-      setError("Failed to add expense. Please try again.");
+      // Reset form
+      setTitle("");
+      setAmount("");
+      setDate("");
+      setDescription("");
+      setCategory("Food");
+    } catch (err) {
+      console.error(err);
+      alert("Error saving expense");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editing) return;
-    if (editing.amount <= 0) return alert("Amount must be greater than 0");
-
+  const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/expenses/${editing.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editing),
-      });
-
-      if (!res.ok) throw new Error("Failed to update");
-
-      const updated = await res.json();
-      setExpenses(expenses.map(e => e.id === updated.id ? updated : e));
-      setEditing(null);
-    } catch (err: any) {
-      alert(err.message);
+      const res = await fetch(`${BASE_URL}/expenses/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting expense");
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleBudget = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!budgetInput || Number(budgetInput) <= 0) return alert("Enter a valid budget");
+
     try {
-      const res = await fetch(`http://localhost:3001/expenses/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      setExpenses(expenses.filter(e => e.id !== id));
+      const method = budget === 0 || budget === null ? "POST" : "PUT";
+
+      const res = await fetch(`${BASE_URL}/api/budget`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(budgetInput) }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to save budget");
+      }
+
+      const data = await res.json();
+      setBudget(data.amount);
+      setRemainingBudget(data.amount - totalExpenses);
+      setBudgetInput("");
     } catch (err: any) {
-      alert(err.message);
+      console.error(err);
+      alert(err.message || "Failed to save budget");
     }
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6 text-black">
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-        
         <h1 className="text-2xl font-bold text-center mb-4">Smart Expense Tracker</h1>
 
-        {/* SUMMARY SECTION */}
+        {/* SUMMARY */}
         <div className="mb-6 p-4 bg-gray-100 rounded">
           <p className="font-medium">Total Spending: ${totalExpenses.toFixed(2)}</p>
-          <p className="font-medium">This Month: ${monthlyTotal.toFixed(2)}</p>
         </div>
 
         {/* BUDGET */}
         <div className="mb-4 p-4 bg-gray-100 rounded">
           <h2 className="font-medium mb-2">Monthly Budget</h2>
-          <form
-            onSubmit={(e)=>handleBudget(e)}
-            className="flex gap-2"
-          >
+          <form onSubmit={handleBudget} className="flex gap-2">
             <input
               type="number"
               placeholder="Set budget"
@@ -212,57 +195,111 @@ export default function Home() {
           {remainingBudget !== null && <p className="mt-1 text-sm">Remaining: ${remainingBudget}</p>}
         </div>
 
-        {/* Form */}
-        <div className="flex flex-col gap-3 mb-6">
-          <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="border p-2 rounded" />
-          <input type="number" min="0.01" step="0.01" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2 rounded" />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded" />
-          <input type="text" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="border p-2 rounded" />
-          <select value={category} onChange={e => setCategory(e.target.value)} className="border p-2 rounded bg-white">
-            {["Food","Transport","Bills","Entertainment","Shopping","Other"].map(c => <option key={c}>{c}</option>)}
-          </select>
-          
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {/* PIE CHART */}
+        <div className="mb-6 p-4 bg-gray-100 rounded">
+          <h2 className="font-medium mb-2">Expenses by Category</h2>
+          <PieChart width={300} height={300}>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              label
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </div>
 
-          <button onClick={handleAddExpense} disabled={isSubmitting} className="p-2 rounded text-white bg-black hover:bg-gray-800 disabled:bg-gray-400">
-            {isSubmitting ? "Saving..." : "Add Expense"}
+        {/* ADD / EDIT EXPENSE FORM */}
+        <div className="flex flex-col gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="Amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <input
+            type="text"
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="border p-2 rounded bg-white"
+          >
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleAddExpense}
+            disabled={isSubmitting}
+            className="p-2 rounded text-white bg-black hover:bg-gray-800 disabled:bg-gray-400"
+          >
+            {isSubmitting ? "Saving..." : editing ? "Update Expense" : "Add Expense"}
           </button>
         </div>
 
-        {/* List */}
+        {/* EXPENSE LIST */}
         <h2 className="text-lg font-semibold mb-3">Expense List</h2>
-        {isFetching ? <p className="text-center text-gray-500">Loading...</p> : expenses.length === 0 ? <p>No expenses yet</p> : (
+        {expenses.length === 0 ? (
+          <p>No expenses yet</p>
+        ) : (
           <ul className="flex flex-col gap-2">
-            {expenses.map(exp => (
+            {expenses.map((exp) => (
               <li key={exp.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50 shadow-sm">
                 <div>
                   <p className="font-medium">{exp.title}</p>
-                  <p className="text-xs text-gray-500">{exp.category} • {exp.date.split("T")[0]}</p>
+                  <p className="text-xs text-gray-500">
+                    {exp.category} • {exp.date.split("T")[0]}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-bold">${exp.amount}</span>
                   <div className="flex gap-1">
-                    <button onClick={() => setEditing(exp)} className="text-xs bg-gray-200 p-1 rounded hover:bg-black hover:text-white">Edit</button>
-                    <button onClick={() => handleDelete(exp.id)} className="text-xs bg-gray-200 p-1 rounded hover:bg-red-500 hover:text-white">Del</button>
+                    <button
+                      onClick={() => setEditing(exp)}
+                      className="text-xs bg-gray-200 p-1 rounded hover:bg-black hover:text-white"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="text-xs bg-gray-200 p-1 rounded hover:bg-red-500 hover:text-white"
+                    >
+                      Del
+                    </button>
                   </div>
                 </div>
               </li>
             ))}
           </ul>
-        )}
-
-        {/* Edit Modal/Form */}
-        {editing && (
-          <div className="mt-6 p-4 border-2 border-black rounded bg-gray-50">
-            <h3 className="font-bold mb-2 text-sm">Editing Expense</h3>
-            <input value={editing.title} onChange={e => setEditing({...editing, title: e.target.value})} className="border p-2 rounded mb-2 w-full text-sm" />
-            <input type="number" min="0.01" step="0.01" value={editing.amount} onChange={e => setEditing({...editing, amount: Number(e.target.value)})} className="border p-2 rounded mb-2 w-full text-sm" />
-            <input type="date" value={editing.date.split("T")[0]} onChange={e => setEditing({...editing, date: e.target.value})} className="border p-2 rounded mb-2 w-full text-sm" />
-            <div className="flex gap-2">
-              <button onClick={handleUpdate} className="bg-black text-white p-2 rounded w-full text-sm">Update</button>
-              <button onClick={() => setEditing(null)} className="bg-gray-300 p-2 rounded w-full text-sm">Cancel</button>
-            </div>
-          </div>
         )}
       </main>
     </div>
