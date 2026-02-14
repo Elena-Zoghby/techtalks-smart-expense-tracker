@@ -61,10 +61,14 @@ export default function Home() {
   }, [expenses]);
 
   // Pie chart data
-  const chartData = categories.map((cat) => ({
+ const chartData = categories
+  .map((cat) => ({
     name: cat,
-    value: expenses.filter((e) => e.category === cat).reduce((sum, e) => sum + e.amount, 0),
-  }));
+    value: expenses
+      .filter((e) => e.category === cat)
+      .reduce((sum, e) => sum + e.amount, 0),
+  }))
+  .filter((data) => data.value > 0);
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
