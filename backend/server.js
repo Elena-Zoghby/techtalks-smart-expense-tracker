@@ -257,7 +257,7 @@ app.get("/api/expenses/stats", async (req, res) => {
       remainingBudget,
       expensesCount,
       categoryTotals,
-      budget: budget ? budget.amount : null
+      budget: budget ? budget.amount : 0
     });
 
   } catch (err) {
