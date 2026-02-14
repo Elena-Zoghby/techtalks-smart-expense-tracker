@@ -1,23 +1,25 @@
 import Expense from "./models/expense.js";
 import Budget from "./models/budget.js";
-import dotenv from 'dotenv';
+import 'dotenv/config'; 
 import mongoose from 'mongoose';
 import express from 'express';
 import cors from "cors";
 
-dotenv.config({ path: '../.env' }); 
+import path from 'path'; 
+
 const app = express();
-const port = 3001;
-
-const mongoURI = process.env.MONGO_URI;
-
-
 app.use(express.json());
 app.use(cors({
   origin: "http://localhost:3000"
 }));
 
 
+const port = 3001;
+
+import dotenv from 'dotenv';
+dotenv.config({ path: '../.env' }); 
+
+const mongoURI = process.env.MONGO_URI;
 
 if (!mongoURI) {
   console.error("❌ ERROR: MONGODB_URI is not defined in your .env file!");
