@@ -44,33 +44,30 @@ export default function Home() {
     fetchExpenses();
   }, []);
 
-  // Fetch budget & stats
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/api/expenses/stats`);
-        if (!res.ok) throw new Error("Failed to fetch stats");
-        const data = await res.json();
-        setBudget(data.budget || 0);
-        setRemainingBudget(data.remainingBudget || 0);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchStats();
-  }, [expenses]);
+  // Calculate dashboard stats
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const numExpenses = expenses.length;
+  const topCategory = (() => {
+    const totals: Record<string, number> = {};
+    categories.forEach((cat) => {
+      totals[cat] = expenses
+        .filter((e) => e.category === cat)
+        .reduce((sum, e) => sum + e.amount, 0);
+    });
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    return sorted[0] && sorted[0][1] > 0 ? sorted[0][0] : "None";
+  })();
+  const remaining = budget !== null ? Math.max(budget - totalExpenses, 0) : 0;
 
   // Pie chart data
- const chartData = categories
-  .map((cat) => ({
-    name: cat,
-    value: expenses
-      .filter((e) => e.category === cat)
-      .reduce((sum, e) => sum + e.amount, 0),
-  }))
-  .filter((data) => data.value > 0);
-
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const chartData = categories
+    .map((cat) => ({
+      name: cat,
+      value: expenses
+        .filter((e) => e.category === cat)
+        .reduce((sum, e) => sum + e.amount, 0),
+    }))
+    .filter((data) => data.value > 0);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -155,10 +152,7 @@ export default function Home() {
         body: JSON.stringify({ amount: Number(budgetInput) }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || "Failed to save budget");
-      }
+      
 
       const data = await res.json();
       setBudget(data.amount);
@@ -175,9 +169,28 @@ export default function Home() {
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <h1 className="text-2xl font-bold text-center mb-4">Smart Expense Tracker</h1>
 
-        {/* SUMMARY */}
-        <div className="mb-6 p-4 bg-gray-100 rounded">
-          <p className="font-medium">Total Spending: ${totalExpenses.toFixed(2)}</p>
+        {/* DASHBOARD CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          <div className="p-4 bg-gray-100 rounded shadow text-center">
+            <p className="text-sm font-medium">Total Spent</p>
+            <p className="text-lg font-bold">${totalExpenses.toFixed(2)}</p>
+          </div>
+          <div className="p-4 bg-gray-100 rounded shadow text-center">
+            <p className="text-sm font-medium">Remaining Budget</p>
+            <p className="text-lg font-bold">${remaining.toFixed(2)}</p>
+          </div>
+          <div className="p-4 bg-gray-100 rounded shadow text-center">
+            <p className="text-sm font-medium">Monthly Budget</p>
+            <p className="text-lg font-bold">${budget || 0}</p>
+          </div>
+          <div className="p-4 bg-gray-100 rounded shadow text-center">
+            <p className="text-sm font-medium">Number of Expenses</p>
+            <p className="text-lg font-bold">{numExpenses}</p>
+          </div>
+          <div className="p-4 bg-gray-100 rounded shadow text-center col-span-1 sm:col-span-2">
+            <p className="text-sm font-medium">Top Category</p>
+            <p className="text-lg font-bold">{topCategory}</p>
+          </div>
         </div>
 
         {/* BUDGET */}
@@ -277,7 +290,10 @@ export default function Home() {
         ) : (
           <ul className="flex flex-col gap-2">
             {expenses.map((exp) => (
-              <li key={exp.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50 shadow-sm">
+              <li
+                key={exp.id}
+                className="flex justify-between items-center border p-3 rounded-lg bg-gray-50 shadow-sm"
+              >
                 <div>
                   <p className="font-medium">{exp.title}</p>
                   <p className="text-xs text-gray-500">
