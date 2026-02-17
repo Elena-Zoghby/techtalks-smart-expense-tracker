@@ -57,7 +57,14 @@ export default function Home() {
     const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
     return sorted[0] && sorted[0][1] > 0 ? sorted[0][0] : "None";
   })();
-  const remaining = budget !== null ? Math.max(budget - totalExpenses, 0) : 0;
+  const now = new Date();
+const currentMonthExpenses = expenses.filter(e => {
+  const d = new Date(e.date);
+  return d.getMonth() === now.getMonth() &&
+         d.getFullYear() === now.getFullYear();
+});
+  const currentMonthTotal = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const remaining = budget !== null ? Math.max(budget - currentMonthTotal, 0) : 0;
 
   // Pie chart data
   const chartData = categories
@@ -208,8 +215,7 @@ export default function Home() {
               Save
             </button>
           </form>
-          {budget !== null && <p className="mt-1 text-sm">Current Budget: ${budget}</p>}
-          {remainingBudget !== null && <p className="mt-1 text-sm">Remaining: ${remainingBudget}</p>}
+      
         </div>
 
         {/* PIE CHART */}
