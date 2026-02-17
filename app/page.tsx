@@ -183,7 +183,7 @@ const currentMonthExpenses = expenses.filter(e => {
             <p className="text-lg font-bold">${totalExpenses.toFixed(2)}</p>
           </div>
           <div className="p-4 bg-gray-100 rounded shadow text-center">
-            <p className="text-sm font-medium">Remaining Budget</p>
+            <p className="text-sm font-medium">Remaining Monthly Budget</p>
             <p className="text-lg font-bold">${remaining.toFixed(2)}</p>
           </div>
           <div className="p-4 bg-gray-100 rounded shadow text-center">
