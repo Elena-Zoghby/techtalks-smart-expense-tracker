@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 
 type Expense = {
@@ -29,7 +29,10 @@ export default function Home() {
   const [remainingBudget, setRemainingBudget] = useState<number | null>(0);
   const [budgetInput, setBudgetInput] = useState("");
 
-  // Fetch expenses
+  const [search, setSearch] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "byCategory">("all");
+  const [filterCategory, setFilterCategory] = useState("All");
+
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
@@ -44,7 +47,6 @@ export default function Home() {
     fetchExpenses();
   }, []);
 
-  // Fetch budget & stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -60,19 +62,17 @@ export default function Home() {
     fetchStats();
   }, [expenses]);
 
-  // Pie chart data
- const chartData = categories
-  .map((cat) => ({
-    name: cat,
-    value: expenses
-      .filter((e) => e.category === cat)
-      .reduce((sum, e) => sum + e.amount, 0),
-  }))
-  .filter((data) => data.value > 0);
+  const chartData = categories
+    .map((cat) => ({
+      name: cat,
+      value: expenses
+        .filter((e) => e.category === cat)
+        .reduce((sum, e) => sum + e.amount, 0),
+    }))
+    .filter((data) => data.value > 0);
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  // Pre-fill form when editing
   useEffect(() => {
     if (editing) {
       setTitle(editing.title);
@@ -83,7 +83,6 @@ export default function Home() {
     }
   }, [editing]);
 
-  // Add / Update Expense
   const handleAddExpense = async () => {
     if (!title || !amount || !date) return alert("Fill all required fields");
     if (Number(amount) <= 0) return alert("Amount must be positive");
@@ -117,7 +116,6 @@ export default function Home() {
         setExpenses((prev) => [...prev, newExp]);
       }
 
-      // Reset form
       setTitle("");
       setAmount("");
       setDate("");
@@ -164,23 +162,42 @@ export default function Home() {
       setBudget(data.amount);
       setRemainingBudget(data.amount - totalExpenses);
       setBudgetInput("");
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Failed to save budget");
-    }
+    } catch (err) {
+  console.error(err);
+  alert(err.message || "Failed to save budget");
+}
+
   };
+
+  const filteredExpenses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return expenses.filter((exp) => {
+      const matchesSearch =
+        q.length === 0 || exp.title.toLowerCase().includes(q);
+
+      const matchesCategory =
+        filterMode === "all" ||
+        filterCategory === "All" ||
+        exp.category === filterCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [expenses, search, filterMode, filterCategory]);
+
+  useEffect(() => {
+    if (filterMode === "all") setFilterCategory("All");
+  }, [filterMode]);
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6 text-black">
       <main className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <h1 className="text-2xl font-bold text-center mb-4">Smart Expense Tracker</h1>
 
-        {/* SUMMARY */}
         <div className="mb-6 p-4 bg-gray-100 rounded">
           <p className="font-medium">Total Spending: ${totalExpenses.toFixed(2)}</p>
         </div>
 
-        {/* BUDGET */}
         <div className="mb-4 p-4 bg-gray-100 rounded">
           <h2 className="font-medium mb-2">Monthly Budget</h2>
           <form onSubmit={handleBudget} className="flex gap-2">
@@ -199,19 +216,10 @@ export default function Home() {
           {remainingBudget !== null && <p className="mt-1 text-sm">Remaining: ${remainingBudget}</p>}
         </div>
 
-        {/* PIE CHART */}
         <div className="mb-6 p-4 bg-gray-100 rounded">
           <h2 className="font-medium mb-2">Expenses by Category</h2>
           <PieChart width={300} height={300}>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              label
-            >
+            <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
@@ -221,84 +229,69 @@ export default function Home() {
           </PieChart>
         </div>
 
-        {/* ADD / EDIT EXPENSE FORM */}
         <div className="flex flex-col gap-3 mb-6">
-          <input
-            type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="border p-2 rounded"
-          />
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            placeholder="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="border p-2 rounded"
-          />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="border p-2 rounded"
-          />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="border p-2 rounded bg-white"
-          >
+          <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="border p-2 rounded" />
+          <input type="number" min="0.01" step="0.01" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="border p-2 rounded" />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border p-2 rounded" />
+          <input type="text" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="border p-2 rounded" />
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="border p-2 rounded bg-white">
             {categories.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
-          <button
-            onClick={handleAddExpense}
-            disabled={isSubmitting}
-            className="p-2 rounded text-white bg-black hover:bg-gray-800 disabled:bg-gray-400"
-          >
+          <button onClick={handleAddExpense} disabled={isSubmitting} className="p-2 rounded text-white bg-black hover:bg-gray-800 disabled:bg-gray-400">
             {isSubmitting ? "Saving..." : editing ? "Update Expense" : "Add Expense"}
           </button>
         </div>
 
-        {/* EXPENSE LIST */}
-        <h2 className="text-lg font-semibold mb-3">Expense List</h2>
-        {expenses.length === 0 ? (
-          <p>No expenses yet</p>
+        <div className="mb-6 p-4 bg-gray-100 rounded space-y-3">
+          <h2 className="font-medium">Search & Filter</h2>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-700">Search by title</label>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Type to search..." className="border p-2 rounded bg-white" />
+          </div>
+
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setFilterMode("all")} className={`flex-1 p-2 rounded border ${filterMode === "all" ? "bg-black text-white border-black" : "bg-white border-gray-300 hover:bg-gray-50"}`}>
+              All
+            </button>
+            <button type="button" onClick={() => setFilterMode("byCategory")} className={`flex-1 p-2 rounded border ${filterMode === "byCategory" ? "bg-black text-white border-black" : "bg-white border-gray-300 hover:bg-gray-50"}`}>
+              By Category
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-700">Category</label>
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} disabled={filterMode === "all"} className={`border p-2 rounded ${filterMode === "all" ? "bg-gray-200 cursor-not-allowed" : "bg-white"}`}>
+              <option value="All">All</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Expense List</h2>
+          <span className="text-sm text-gray-600">{filteredExpenses.length} shown</span>
+        </div>
+
+        {filteredExpenses.length === 0 ? (
+          <p className="text-gray-600">No matching expenses. Try a different search or filter.</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {expenses.map((exp) => (
+            {filteredExpenses.map((exp) => (
               <li key={exp.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50 shadow-sm">
                 <div>
                   <p className="font-medium">{exp.title}</p>
-                  <p className="text-xs text-gray-500">
-                    {exp.category} • {exp.date.split("T")[0]}
-                  </p>
+                  <p className="text-xs text-gray-500">{exp.category} • {exp.date.split("T")[0]}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-bold">${exp.amount}</span>
                   <div className="flex gap-1">
-                    <button
-                      onClick={() => setEditing(exp)}
-                      className="text-xs bg-gray-200 p-1 rounded hover:bg-black hover:text-white"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(exp.id)}
-                      className="text-xs bg-gray-200 p-1 rounded hover:bg-red-500 hover:text-white"
-                    >
-                      Del
-                    </button>
+                    <button onClick={() => setEditing(exp)} className="text-xs bg-gray-200 p-1 rounded hover:bg-black hover:text-white">Edit</button>
+                    <button onClick={() => handleDelete(exp.id)} className="text-xs bg-gray-200 p-1 rounded hover:bg-red-500 hover:text-white">Del</button>
                   </div>
                 </div>
               </li>
