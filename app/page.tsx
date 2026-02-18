@@ -164,7 +164,7 @@ export default function Home() {
       setBudgetInput("");
     } catch (err) {
   console.error(err);
-  alert(err.message || "Failed to save budget");
+  alert("Failed to save budget");
 }
 
   };
