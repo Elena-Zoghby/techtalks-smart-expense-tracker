@@ -79,7 +79,7 @@ const monthlyExpenses = expenses.filter(e => {
          d.getFullYear() === now.getFullYear();
 });
 
-const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+const totalExpenses = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
 const topCategory = (() => {
   const totals: Record<string, number> = {};
 
