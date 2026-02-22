@@ -310,7 +310,39 @@ const getPrediction = () => {
 };
 
 const predictedSpending = getPrediction();
+// ===== Spending Trend (This Week vs Last Week) =====
+const nowDate = new Date();
 
+const startOfThisWeek = new Date(nowDate);
+startOfThisWeek.setDate(nowDate.getDate() - nowDate.getDay());
+startOfThisWeek.setHours(0, 0, 0, 0);
+
+const startOfLastWeek = new Date(startOfThisWeek);
+startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+
+const endOfLastWeek = new Date(startOfThisWeek);
+endOfLastWeek.setMilliseconds(-1);
+
+const thisWeekTotal = expenses
+  .filter(e => {
+    const d = new Date(e.date);
+    return d >= startOfThisWeek;
+  })
+  .reduce((sum, e) => sum + e.amount, 0);
+
+const lastWeekTotal = expenses
+  .filter(e => {
+    const d = new Date(e.date);
+    return d >= startOfLastWeek && d <= endOfLastWeek;
+  })
+  .reduce((sum, e) => sum + e.amount, 0);
+
+let trendPercent = 0;
+if (lastWeekTotal > 0) {
+  trendPercent = ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100;
+}
+
+const trendUp = thisWeekTotal > lastWeekTotal;
 
 const getSuggestion = () => {
   if (predictedSpending === 0) return "Add some expenses to see your monthly prediction.";
@@ -511,10 +543,7 @@ const getSuggestion = () => {
               </div>
             </div>
           </div>
-
-          {/* Right Column - Dashboard */}
           <div className="lg:w-2/3 space-y-6">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div
                 className={`rounded-xl shadow-lg p-6 border ${darkMode
@@ -534,6 +563,15 @@ const getSuggestion = () => {
                 >
                   ${totalExpenses.toFixed(2)}
                 </p>
+                {lastWeekTotal > 0 && (
+            <p
+              className={`text-sm mt-2 font-medium ${
+                trendUp ? "text-red-500" : "text-green-500"
+              }`}
+            >
+              {trendUp ? "▲" : "▼"} {Math.abs(trendPercent).toFixed(0)}% vs last week
+            </p>
+          )}
               </div>
 
               <div
