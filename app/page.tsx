@@ -297,6 +297,33 @@ export default function Home() {
     if (filterMode === "all") setFilterCategory("All");
   }, [filterMode]);
 
+// Prediction Logic
+const getPrediction = () => {
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const today = now.getDate();
+  
+  if (monthlyExpenses.length === 0) return 0;
+  
+  // Calculate pace: Total spent so far / days elapsed
+  const dailyBurnRate = totalExpenses / today;
+  return dailyBurnRate * daysInMonth;
+};
+
+const predictedSpending = getPrediction();
+
+
+const getSuggestion = () => {
+  if (predictedSpending === 0) return "Add some expenses to see your monthly prediction.";
+  if (!budget || budget === 0) return `You're on track to spend $${predictedSpending.toFixed(2)} this month. Set a budget to see how you're doing!`;
+  
+  if (predictedSpending > budget) {
+    const over = predictedSpending - budget;
+    return `Warning: At this pace, you'll exceed your budget by $${over.toFixed(2)}. Consider cutting back on ${topCategory.toLowerCase()}.`;
+  }
+  return "Great job! You're currently on track to stay within your budget.";
+};
+
+
   return (
     <div
       className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-gray-50 text-gray-900"
@@ -599,6 +626,16 @@ export default function Home() {
               >
                 Monthly Budget Setup
               </h2>
+              {/* Prediction / Suggestion Section */}
+            <div className={`p-4 rounded-xl border mt-4 ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-blue-50 border-blue-100 text-blue-900"}`}>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide">Monthly Prediction</h3>
+                <span className="text-lg font-bold">${predictedSpending.toFixed(2)}</span>
+              </div>
+              <p className="text-sm opacity-90 italic">
+                "{getSuggestion()}"
+              </p>
+            </div>
               <form onSubmit={handleBudget} className="flex gap-3">
                 <input
                   type="number"
