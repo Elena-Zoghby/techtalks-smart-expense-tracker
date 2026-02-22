@@ -42,6 +42,7 @@ const responseData = expenses.map(exp => ({
   amount: exp.amount,
   date: exp.date,
   category: exp.category,
+  description: exp.description,
   createdAt: exp.createdAt,
   updatedAt: exp.updatedAt
 }));
@@ -51,9 +52,10 @@ res.json(responseData);
     res.status(500).json({ error: err.message });
   }
 });
+
 app.post('/expenses', async (req, res) => {
   try {
-    const { title, amount, date, category } = req.body;
+    const { title, amount, date, category, description } = req.body;
 
     if (!title || !amount || !date || !category) {
       return res.status(400).json({ message: "Missing fields" });
@@ -63,20 +65,22 @@ app.post('/expenses', async (req, res) => {
       title,
       amount,
       date,
-      category
+      category,
+      description: description || ''
     });
 
     const saved = await expense.save();
 
-res.status(201).json({
-  id: saved._id,
-  title: saved.title,
-  amount: saved.amount,
-  date: saved.date,
-  category: saved.category,
-  createdAt: saved.createdAt,
-  updatedAt: saved.updatedAt
-});
+    res.status(201).json({
+      id: saved._id,
+      title: saved.title,
+      amount: saved.amount,
+      date: saved.date,
+      category: saved.category,
+      description: saved.description,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
