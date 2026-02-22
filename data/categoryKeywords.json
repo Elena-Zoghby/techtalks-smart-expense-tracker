@@ -1,0 +1,26 @@
+{
+  "Food": [
+    "pizza", "burger", "restaurant", "cafe", "dinner", "lunch", "breakfast",
+    "shawarma", "apple", "banana", "sandwich", "pasta", "sushi", "coffee",
+    "tea", "juice", "snack", "salad", "donut", "taco", "steak", "fish"
+  ],
+  "Shopping": [
+    "clothes", "shirt", "jeans", "shoes", "zara", "mall", "jacket",
+    "bag", "sneakers", "hat", "watch", "belt", "scarf", "dress", "accessory",
+    "cosmetics", "makeup", "perfume", "sunglasses", "electronics", "gadget"
+  ],
+  "Transport": [
+    "uber", "taxi", "bus", "fuel", "gas", "ride", "train", "metro", "subway",
+    "flight", "ticket", "cab", "lyft", "transport", "taxi fare", "parking", "toll", "car"
+  ],
+  "Bills": [
+    "electricity", "water", "internet", "rent", "subscription",
+    "insurance", "phone", "gas bill", "utilities", "membership", "netflix",
+    "spotify", "amazon prime", "payment", "bill", "tax"
+  ],
+  "Entertainment": [
+    "movie", "cinema", "netflix", "game", "concert", "show", "festival",
+    "theater", "performance", "party", "club", "music", "gaming", "streaming",
+    "book", "reading", "hobby", "amusement", "entertainment", "leisure"
+  ]
+}
