@@ -34,42 +34,14 @@ export default function Home() {
   const [filterMode, setFilterMode] = useState<"all" | "byCategory">("all");
   const [filterCategory, setFilterCategory] = useState("All");
 
-  // Dark mode state
   const [darkMode, setDarkMode] = useState(false);
-
-  // Load dark mode preference from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      setDarkMode(true);
-    }
-  }, []);
-
-  // Save theme whenever it changes
-  useEffect(() => {
-    localStorage.setItem("theme", darkMode ? "dark" : "light");
-  }, [darkMode]);
-
-  // Toggle dark mode and save preference
-  const toggleDarkMode = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    }
-    setDarkMode(!darkMode);
-  };
-
   const [manualCategory, setManualCategory] = useState(false);
 
-
-
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
       setDarkMode(true);
+      document.documentElement.classList.add("dark");
     }
   }, []);
 
@@ -77,9 +49,17 @@ export default function Home() {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    }
+    setDarkMode((prev) => !prev);
+  };
 
-
-  //Auto Category Detection
   const detectCategory = (title: string): string => {
     if (!title.trim()) return "Other";
 
@@ -91,16 +71,18 @@ export default function Home() {
     let bestCategory: string | null = null;
     let highestScore = 0;
 
-    (Object.keys(categoryKeywords) as (keyof typeof categoryKeywords)[]).forEach(category => {
-      let score = 0;
-      for (const keyword of categoryKeywords[category]) {
-        if (words.includes(keyword)) score++;
+    (Object.keys(categoryKeywords) as (keyof typeof categoryKeywords)[]).forEach(
+      (categoryKey) => {
+        let score = 0;
+        for (const keyword of categoryKeywords[categoryKey]) {
+          if (words.includes(keyword)) score++;
+        }
+        if (score > highestScore) {
+          highestScore = score;
+          bestCategory = categoryKey;
+        }
       }
-      if (score > highestScore) {
-        highestScore = score;
-        bestCategory = category;
-      }
-    });
+    );
 
     return bestCategory ?? "Other";
   };
@@ -145,10 +127,9 @@ export default function Home() {
 
   const now = new Date();
 
-  const monthlyExpenses = expenses.filter(e => {
+  const monthlyExpenses = expenses.filter((e) => {
     const d = new Date(e.date);
-    return d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 
   const totalExpenses = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -157,9 +138,9 @@ export default function Home() {
   const topCategory = (() => {
     const totals: Record<string, number> = {};
 
-    categories.forEach(cat => {
+    categories.forEach((cat) => {
       totals[cat] = monthlyExpenses
-        .filter(e => e.category === cat)
+        .filter((e) => e.category === cat)
         .reduce((sum, e) => sum + e.amount, 0);
     });
 
@@ -178,8 +159,14 @@ export default function Home() {
   }, [editing]);
 
   const handleAddExpense = async () => {
-    if (!title || !amount || !date) return alert("Fill all required fields");
-    if (Number(amount) <= 0) return alert("Amount must be positive");
+    if (!title || !amount || !date) {
+      alert("Fill all required fields");
+      return;
+    }
+    if (Number(amount) <= 0) {
+      alert("Amount must be positive");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -203,7 +190,13 @@ export default function Home() {
         const res = await fetch(`${BASE_URL}/expenses`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, amount: Number(amount), date, description, category }),
+          body: JSON.stringify({
+            title,
+            amount: Number(amount),
+            date,
+            description,
+            category,
+          }),
         });
         if (!res.ok) throw new Error("Failed to add expense");
         const newExp = await res.json();
@@ -234,6 +227,7 @@ export default function Home() {
       alert("Error deleting expense");
     }
   };
+
   let budgetAlert = "";
   let alertColor = "";
 
@@ -250,7 +244,10 @@ export default function Home() {
 
   const handleBudget = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!budgetInput || Number(budgetInput) <= 0) return alert("Enter a valid budget");
+    if (!budgetInput || Number(budgetInput) <= 0) {
+      alert("Enter a valid budget");
+      return;
+    }
 
     try {
       const method = budget === 0 || budget === null ? "POST" : "PUT";
@@ -274,7 +271,29 @@ export default function Home() {
       console.error(err);
       alert("Failed to save budget");
     }
+  };
 
+  const handleExportPdf = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/expenses/export-pdf`);
+      if (!res.ok) throw new Error("Failed to export PDF");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      const monthKey = new Date().toISOString().slice(0, 7);
+      a.download = `expenses-${monthKey}.pdf`;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to export PDF");
+    }
   };
 
   const filteredExpenses = useMemo(() => {
@@ -297,45 +316,49 @@ export default function Home() {
     if (filterMode === "all") setFilterCategory("All");
   }, [filterMode]);
 
-// Prediction Logic
-const getPrediction = () => {
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const today = now.getDate();
-  
-  if (monthlyExpenses.length === 0) return 0;
-  
-  // Calculate pace: Total spent so far / days elapsed
-  const dailyBurnRate = totalExpenses / today;
-  return dailyBurnRate * daysInMonth;
-};
+  const getPrediction = () => {
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const today = now.getDate();
 
-const predictedSpending = getPrediction();
+    if (monthlyExpenses.length === 0) return 0;
 
+    const dailyBurnRate = totalExpenses / today;
+    return dailyBurnRate * daysInMonth;
+  };
 
-const getSuggestion = () => {
-  if (predictedSpending === 0) return "Add some expenses to see your monthly prediction.";
-  if (!budget || budget === 0) return `You're on track to spend $${predictedSpending.toFixed(2)} this month. Set a budget to see how you're doing!`;
-  
-  if (predictedSpending > budget) {
-    const over = predictedSpending - budget;
-    return `Warning: At this pace, you'll exceed your budget by $${over.toFixed(2)}. Consider cutting back on ${topCategory.toLowerCase()}.`;
-  }
-  return "Great job! You're currently on track to stay within your budget.";
-};
+  const predictedSpending = getPrediction();
 
+  const getSuggestion = () => {
+    if (predictedSpending === 0)
+      return "Add some expenses to see your monthly prediction.";
+    if (!budget || budget === 0)
+      return `You're on track to spend $${predictedSpending.toFixed(
+        2
+      )} this month. Set a budget to see how you're doing!`;
+
+    if (predictedSpending > budget) {
+      const over = predictedSpending - budget;
+      return `Warning: At this pace, you'll exceed your budget by $${over.toFixed(
+        2
+      )}. Consider cutting back on ${topCategory.toLowerCase()}.`;
+    }
+    return "Great job! You're currently on track to stay within your budget.";
+  };
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-gray-50 text-gray-900"
-        }`}
+      className={`min-h-screen transition-colors duration-300 ${
+        darkMode ? "bg-slate-950 text-slate-100" : "bg-gray-50 text-gray-900"
+      }`}
     >
       <div className="fixed top-4 right-4 z-10">
         <button
           onClick={toggleDarkMode}
-          className={`p-3 rounded-lg shadow-lg border transition-all duration-300 ${darkMode
+          className={`p-3 rounded-lg shadow-lg border transition-all duration-300 ${
+            darkMode
               ? "bg-slate-800 border-slate-700 hover:bg-slate-700"
               : "bg-white border-gray-200 hover:shadow-xl"
-            }`}
+          }`}
           aria-label="Toggle dark mode"
         >
           {darkMode ? "Turn Light Mode on" : "Turn Dark Mode on"}
@@ -343,23 +366,21 @@ const getSuggestion = () => {
       </div>
 
       <main className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold text-center mb-8">
-          Smart Expense Tracker
-        </h1>
+        <h1 className="text-3xl font-bold text-center mb-8">Smart Expense Tracker</h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-1/3">
             <div
-              className={`rounded-xl shadow-lg p-6 border sticky top-6 ${darkMode
-                  ? "bg-slate-900 border-slate-800"
-                  : "bg-white border-gray-200"
-                }`}
+              className={`rounded-xl shadow-lg p-6 border sticky top-6 ${
+                darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
+              }`}
             >
               <h2
-                className={`text-xl font-semibold mb-6 pb-3 border-b ${darkMode
+                className={`text-xl font-semibold mb-6 pb-3 border-b ${
+                  darkMode
                     ? "text-slate-100 border-slate-800"
                     : "text-gray-800 border-gray-200"
-                  }`}
+                }`}
               >
                 {editing ? "Edit Expense" : "Add New Expense"}
               </h2>
@@ -367,8 +388,9 @@ const getSuggestion = () => {
               <div className="space-y-4">
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${darkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
+                    className={`block text-sm font-medium mb-1 ${
+                      darkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
                   >
                     Title *
                   </label>
@@ -386,18 +408,19 @@ const getSuggestion = () => {
                         }
                       }
                     }}
-                  
-                  className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
-                      ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
-                      : "bg-white border-gray-300 text-gray-900"
+                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      darkMode
+                        ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
+                        : "bg-white border-gray-300 text-gray-900"
                     }`}
                   />
                 </div>
 
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${darkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
+                    className={`block text-sm font-medium mb-1 ${
+                      darkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
                   >
                     Amount ($) *
                   </label>
@@ -408,17 +431,19 @@ const getSuggestion = () => {
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      darkMode
                         ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
                         : "bg-white border-gray-300 text-gray-900"
-                      }`}
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${darkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
+                    className={`block text-sm font-medium mb-1 ${
+                      darkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
                   >
                     Date *
                   </label>
@@ -426,17 +451,19 @@ const getSuggestion = () => {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      darkMode
                         ? "bg-slate-800 border-slate-700 text-slate-100"
                         : "bg-white border-gray-300 text-gray-900"
-                      }`}
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${darkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
+                    className={`block text-sm font-medium mb-1 ${
+                      darkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
                   >
                     Description
                   </label>
@@ -445,27 +472,30 @@ const getSuggestion = () => {
                     placeholder="Additional details..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      darkMode
                         ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
                         : "bg-white border-gray-300 text-gray-900"
-                      }`}
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label
-                    className={`block text-sm font-medium mb-1 ${darkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
+                    className={`block text-sm font-medium mb-1 ${
+                      darkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
                   >
                     Category
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                    className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      darkMode
                         ? "bg-slate-800 border-slate-700 text-slate-100"
                         : "bg-white border-gray-300 text-gray-900"
-                      }`}
+                    }`}
                   >
                     {categories.map((c) => (
                       <option key={c}>{c}</option>
@@ -476,18 +506,19 @@ const getSuggestion = () => {
                 <button
                   onClick={handleAddExpense}
                   disabled={isSubmitting}
-                  className={`w-full p-3 rounded-lg text-white font-medium transition-colors duration-200 shadow-md hover:shadow-lg ${isSubmitting
+                  className={`w-full p-3 rounded-lg text-white font-medium transition-colors duration-200 shadow-md hover:shadow-lg ${
+                    isSubmitting
                       ? darkMode
                         ? "bg-slate-600 cursor-not-allowed"
                         : "bg-gray-400 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700"
-                    }`}
+                  }`}
                 >
                   {isSubmitting
                     ? "Saving..."
                     : editing
-                      ? "Update Expense"
-                      : "Add Expense"}
+                    ? "Update Expense"
+                    : "Add Expense"}
                 </button>
 
                 {editing && (
@@ -500,10 +531,11 @@ const getSuggestion = () => {
                       setDescription("");
                       setCategory("Food");
                     }}
-                    className={`w-full p-3 rounded-lg font-medium transition-colors duration-200 ${darkMode
+                    className={`w-full p-3 rounded-lg font-medium transition-colors duration-200 ${
+                      darkMode
                         ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                    }`}
                   >
                     Cancel Edit
                   </button>
@@ -512,59 +544,65 @@ const getSuggestion = () => {
             </div>
           </div>
 
-          {/* Right Column - Dashboard */}
           <div className="lg:w-2/3 space-y-6">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <p
-                  className={`text-sm mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"
-                    }`}
+                  className={`text-sm mb-1 ${
+                    darkMode ? "text-slate-400" : "text-gray-500"
+                  }`}
                 >
                   Monthly Total
                 </p>
                 <p
-                  className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   ${totalExpenses.toFixed(2)}
                 </p>
               </div>
 
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <p
-                  className={`text-sm mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"
-                    }`}
+                  className={`text-sm mb-1 ${
+                    darkMode ? "text-slate-400" : "text-gray-500"
+                  }`}
                 >
                   Budget Status
                 </p>
                 <p
-                  className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   ${(remainingBudget ?? 0).toFixed(2)}
                 </p>
                 <div
-                  className={`w-full rounded-full h-2 mt-3 ${darkMode ? "bg-slate-700" : "bg-gray-200"
-                    }`}
+                  className={`w-full rounded-full h-2 mt-3 ${
+                    darkMode ? "bg-slate-700" : "bg-gray-200"
+                  }`}
                 >
                   <div
-                    className={`h-2 rounded-full ${budgetUsage >= 100
+                    className={`h-2 rounded-full ${
+                      budgetUsage >= 100
                         ? "bg-red-500"
                         : budgetUsage >= 80
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                    }`}
                     style={{ width: `${Math.min(budgetUsage, 100)}%` }}
                   ></div>
                 </div>
@@ -574,40 +612,46 @@ const getSuggestion = () => {
               </div>
 
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <p
-                  className={`text-sm mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"
-                    }`}
+                  className={`text-sm mb-1 ${
+                    darkMode ? "text-slate-400" : "text-gray-500"
+                  }`}
                 >
                   Expense Count
                 </p>
                 <p
-                  className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   {expenses.length}
                 </p>
               </div>
 
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <p
-                  className={`text-sm mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"
-                    }`}
+                  className={`text-sm mb-1 ${
+                    darkMode ? "text-slate-400" : "text-gray-500"
+                  }`}
                 >
                   Top Category
                 </p>
                 <p
-                  className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   {topCategory}
                 </p>
@@ -615,37 +659,49 @@ const getSuggestion = () => {
             </div>
 
             <div
-              className={`rounded-xl shadow-lg p-6 border ${darkMode
-                  ? "bg-slate-900 border-slate-800"
-                  : "bg-white border-gray-200"
-                }`}
+              className={`rounded-xl shadow-lg p-6 border ${
+                darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
+              }`}
             >
               <h2
-                className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"
-                  }`}
+                className={`text-lg font-semibold mb-4 ${
+                  darkMode ? "text-white" : "text-gray-800"
+                }`}
               >
                 Monthly Budget Setup
               </h2>
-              {/* Prediction / Suggestion Section */}
-            <div className={`p-4 rounded-xl border mt-4 ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-blue-50 border-blue-100 text-blue-900"}`}>
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-bold uppercase tracking-wide">Monthly Prediction</h3>
-                <span className="text-lg font-bold">${predictedSpending.toFixed(2)}</span>
+
+              <div
+                className={`p-4 rounded-xl border mt-4 ${
+                  darkMode
+                    ? "bg-slate-900 border-slate-800 text-white"
+                    : "bg-blue-50 border-blue-100 text-blue-900"
+                }`}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-bold uppercase tracking-wide">
+                    Monthly Prediction
+                  </h3>
+                  <span className="text-lg font-bold">
+                    ${predictedSpending.toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-sm opacity-90 italic">
+                  "{getSuggestion()}"
+                </p>
               </div>
-              <p className="text-sm opacity-90 italic">
-                "{getSuggestion()}"
-              </p>
-            </div>
-              <form onSubmit={handleBudget} className="flex gap-3">
+
+              <form onSubmit={handleBudget} className="flex gap-3 mt-4">
                 <input
                   type="number"
                   placeholder="Enter budget amount"
                   value={budgetInput}
                   onChange={(e) => setBudgetInput(e.target.value)}
-                  className={`flex-1 border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                  className={`flex-1 border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    darkMode
                       ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
                       : "bg-white border-gray-300 text-gray-900"
-                    }`}
+                  }`}
                 />
                 <button
                   type="submit"
@@ -658,14 +714,16 @@ const getSuggestion = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <h2
-                  className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-lg font-semibold mb-4 ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   Expenses by Category
                 </h2>
@@ -702,14 +760,16 @@ const getSuggestion = () => {
               </div>
 
               <div
-                className={`rounded-xl shadow-lg p-6 border ${darkMode
+                className={`rounded-xl shadow-lg p-6 border ${
+                  darkMode
                     ? "bg-slate-900 border-slate-800"
                     : "bg-white border-gray-200"
-                  }`}
+                }`}
               >
                 <h2
-                  className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-lg font-semibold mb-4 ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   Search & Filter
                 </h2>
@@ -717,8 +777,9 @@ const getSuggestion = () => {
                 <div className="space-y-4">
                   <div>
                     <label
-                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-slate-300" : "text-gray-700"
-                        }`}
+                      className={`block text-sm font-medium mb-2 ${
+                        darkMode ? "text-slate-300" : "text-gray-700"
+                      }`}
                     >
                       Search by title
                     </label>
@@ -726,10 +787,11 @@ const getSuggestion = () => {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Type to search..."
-                      className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${darkMode
+                      className={`w-full border rounded-lg p-3 transition-all focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
                           ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400"
                           : "bg-white border-gray-300 text-gray-900"
-                        }`}
+                      }`}
                     />
                   </div>
 
@@ -737,24 +799,26 @@ const getSuggestion = () => {
                     <button
                       type="button"
                       onClick={() => setFilterMode("all")}
-                      className={`flex-1 p-3 rounded-lg font-medium transition-all duration-200 ${filterMode === "all"
+                      className={`flex-1 p-3 rounded-lg font-medium transition-all duration-200 ${
+                        filterMode === "all"
                           ? "bg-blue-600 text-white shadow-md"
                           : darkMode
-                            ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
+                          ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
                     >
                       All
                     </button>
                     <button
                       type="button"
                       onClick={() => setFilterMode("byCategory")}
-                      className={`flex-1 p-3 rounded-lg font-medium transition-all duration-200 ${filterMode === "byCategory"
+                      className={`flex-1 p-3 rounded-lg font-medium transition-all duration-200 ${
+                        filterMode === "byCategory"
                           ? "bg-blue-600 text-white shadow-md"
                           : darkMode
-                            ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
+                          ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
                     >
                       By Category
                     </button>
@@ -762,8 +826,9 @@ const getSuggestion = () => {
 
                   <div>
                     <label
-                      className={`block text-sm font-medium mb-2 ${darkMode ? "text-slate-300" : "text-gray-700"
-                        }`}
+                      className={`block text-sm font-medium mb-2 ${
+                        darkMode ? "text-slate-300" : "text-gray-700"
+                      }`}
                     >
                       Category
                     </label>
@@ -771,14 +836,15 @@ const getSuggestion = () => {
                       value={filterCategory}
                       onChange={(e) => setFilterCategory(e.target.value)}
                       disabled={filterMode === "all"}
-                      className={`w-full border rounded-lg p-3 transition-all ${filterMode === "all"
+                      className={`w-full border rounded-lg p-3 transition-all ${
+                        filterMode === "all"
                           ? darkMode
                             ? "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed"
                             : "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
                           : darkMode
-                            ? "bg-slate-800 border-slate-700 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            : "bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        }`}
+                          ? "bg-slate-800 border-slate-700 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          : "bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      }`}
                     >
                       <option value="All">All Categories</option>
                       {categories.map((c) => (
@@ -793,33 +859,48 @@ const getSuggestion = () => {
             </div>
 
             <div
-              className={`rounded-xl shadow-lg p-6 border ${darkMode
-                  ? "bg-slate-900 border-slate-800"
-                  : "bg-white border-gray-200"
-                }`}
+              className={`rounded-xl shadow-lg p-6 border ${
+                darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
+              }`}
             >
               <div className="flex items-center justify-between mb-4">
                 <h2
-                  className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-800"
-                    }`}
+                  className={`text-lg font-semibold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}
                 >
                   Expense List
                 </h2>
                 <span
-                  className={`text-sm px-3 py-1 rounded-full ${darkMode
+                  className={`text-sm px-3 py-1 rounded-full ${
+                    darkMode
                       ? "bg-slate-800 text-slate-400"
                       : "bg-gray-100 text-gray-600"
-                    }`}
+                  }`}
                 >
                   {filteredExpenses.length}{" "}
                   {filteredExpenses.length === 1 ? "item" : "items"}
                 </span>
               </div>
 
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleExportPdf}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-sm hover:shadow-md ${
+                    darkMode
+                      ? "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  Export current month (PDF)
+                </button>
+              </div>
+
               {filteredExpenses.length === 0 ? (
                 <p
-                  className={`text-center py-8 ${darkMode ? "text-slate-400" : "text-gray-600"
-                    }`}
+                  className={`text-center py-8 ${
+                    darkMode ? "text-slate-400" : "text-gray-600"
+                  }`}
                 >
                   No matching expenses. Try a different search or filter.
                 </p>
@@ -828,29 +909,33 @@ const getSuggestion = () => {
                   {filteredExpenses.map((exp) => (
                     <div
                       key={exp.id}
-                      className={`flex justify-between items-center border p-4 rounded-lg transition-all duration-200 hover:shadow-md ${darkMode
+                      className={`flex justify-between items-center border p-4 rounded-lg transition-all duration-200 hover:shadow-md ${
+                        darkMode
                           ? "bg-slate-800 border-slate-700 hover:bg-slate-700"
                           : "bg-gray-50 border-gray-200"
-                        }`}
+                      }`}
                     >
                       <div className="flex-1">
                         <p
-                          className={`font-medium ${darkMode ? "text-white" : "text-gray-800"
-                            }`}
+                          className={`font-medium ${
+                            darkMode ? "text-white" : "text-gray-800"
+                          }`}
                         >
                           {exp.title}
                         </p>
                         <p
-                          className={`text-sm ${darkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
+                          className={`text-sm ${
+                            darkMode ? "text-slate-400" : "text-gray-500"
+                          }`}
                         >
                           {exp.category} •{" "}
                           {new Date(exp.date).toLocaleDateString()}
                         </p>
                         {exp.description && (
                           <p
-                            className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-gray-400"
-                              }`}
+                            className={`text-xs mt-1 ${
+                              darkMode ? "text-slate-500" : "text-gray-400"
+                            }`}
                           >
                             {exp.description}
                           </p>
@@ -858,27 +943,30 @@ const getSuggestion = () => {
                       </div>
                       <div className="flex items-center gap-4">
                         <span
-                          className={`font-bold ${darkMode ? "text-white" : "text-gray-800"
-                            }`}
+                          className={`font-bold ${
+                            darkMode ? "text-white" : "text-gray-800"
+                          }`}
                         >
                           ${exp.amount.toFixed(2)}
                         </span>
                         <div className="flex gap-2">
                           <button
                             onClick={() => setEditing(exp)}
-                            className={`text-xs px-3 py-1.5 rounded transition-colors duration-200 ${darkMode
+                            className={`text-xs px-3 py-1.5 rounded transition-colors duration-200 ${
+                              darkMode
                                 ? "bg-slate-700 text-slate-300 hover:bg-blue-600 hover:text-white"
                                 : "bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white"
-                              }`}
+                            }`}
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(exp.id)}
-                            className={`text-xs px-3 py-1.5 rounded transition-colors duration-200 ${darkMode
+                            className={`text-xs px-3 py-1.5 rounded transition-colors duration-200 ${
+                              darkMode
                                 ? "bg-slate-700 text-slate-300 hover:bg-red-500 hover:text-white"
                                 : "bg-gray-200 text-gray-700 hover:bg-red-500 hover:text-white"
-                              }`}
+                            }`}
                           >
                             Delete
                           </button>

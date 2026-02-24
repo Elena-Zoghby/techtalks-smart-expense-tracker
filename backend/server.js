@@ -1,59 +1,59 @@
 import Expense from "./models/expense.js";
 import Budget from "./models/budget.js";
-import 'dotenv/config'; 
-import mongoose from 'mongoose';
-import express from 'express';
+import mongoose from "mongoose";
+import express from "express";
 import cors from "cors";
+import PDFDocument from "pdfkit";
+import dotenv from "dotenv";
 
-import path from 'path'; 
+dotenv.config({ path: "../.env" });
 
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: "http://localhost:3000"
-}));
-
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+  })
+);
 
 const port = 3001;
-
-import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' }); 
-
 const mongoURI = process.env.MONGO_URI;
 
 if (!mongoURI) {
   console.error("❌ ERROR: MONGODB_URI is not defined in your .env file!");
 } else {
-  mongoose.connect(mongoURI)
+  mongoose
+    .connect(mongoURI)
     .then(() => console.log("✅ SUCCESS: We are connected to MongoDB!"))
     .catch((err) => console.error("❌ ERROR: Connection failed:", err));
 }
 
-app.get('/health', (req, res) => { 
-  res.send({ status: 'Server is running!' });
+app.get("/health", (req, res) => {
+  res.send({ status: "Server is running!" });
 });
-app.get('/expenses', async (req, res) => {
+
+app.get("/expenses", async (req, res) => {
   try {
     const expenses = await Expense.find().sort({ date: -1 });
 
-const responseData = expenses.map(exp => ({
-  id: exp._id, 
-  title: exp.title,
-  amount: exp.amount,
-  date: exp.date,
-  category: exp.category,
-  description: exp.description,
-  createdAt: exp.createdAt,
-  updatedAt: exp.updatedAt
-}));
+    const responseData = expenses.map((exp) => ({
+      id: exp._id,
+      title: exp.title,
+      amount: exp.amount,
+      date: exp.date,
+      category: exp.category,
+      description: exp.description,
+      createdAt: exp.createdAt,
+      updatedAt: exp.updatedAt,
+    }));
 
-res.json(responseData);
+    res.json(responseData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/expenses', async (req, res) => {
+app.post("/expenses", async (req, res) => {
   try {
     const { title, amount, date, category, description } = req.body;
 
@@ -66,7 +66,7 @@ app.post('/expenses', async (req, res) => {
       amount,
       date,
       category,
-      description: description || ''
+      description: description || "",
     });
 
     const saved = await expense.save();
@@ -79,15 +79,14 @@ app.post('/expenses', async (req, res) => {
       category: saved.category,
       description: saved.description,
       createdAt: saved.createdAt,
-      updatedAt: saved.updatedAt
+      updatedAt: saved.updatedAt,
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/expenses/:id', async (req, res) => {
+app.put("/expenses/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { title, amount, date, description, category } = req.body;
@@ -106,7 +105,7 @@ app.put('/expenses/:id', async (req, res) => {
         title,
         amount: Number(amount),
         date: new Date(date),
-        description: description || '',
+        description: description || "",
         category,
       },
       { new: true, runValidators: true }
@@ -116,8 +115,6 @@ app.put('/expenses/:id', async (req, res) => {
       return res.status(404).json({ message: "Expense not found" });
     }
 
-    console.log('Update successful:', updatedExpense);
-
     res.json({
       id: updatedExpense._id,
       title: updatedExpense.title,
@@ -126,20 +123,17 @@ app.put('/expenses/:id', async (req, res) => {
       description: updatedExpense.description,
       category: updatedExpense.category,
       createdAt: updatedExpense.createdAt,
-      updatedAt: updatedExpense.updatedAt
+      updatedAt: updatedExpense.updatedAt,
     });
-
   } catch (err) {
-    console.error('Update error:', err);
+    console.error("Update error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/expenses/:id', async (req, res) => {
+app.delete("/expenses/:id", async (req, res) => {
   try {
     const { id } = req.params;
-
-    console.log('🗑️ Delete request for ID:', id);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid expense ID format" });
@@ -151,16 +145,12 @@ app.delete('/expenses/:id', async (req, res) => {
       return res.status(404).json({ message: "Expense not found" });
     }
 
-    console.log('Delete successful:', deletedExpense);
     res.json({ message: "Expense deleted successfully", id: deletedExpense._id });
-
   } catch (err) {
-    console.error('Delete error:', err);
+    console.error("Delete error:", err);
     res.status(500).json({ error: err.message });
   }
 });
-
-// Budget
 
 app.get("/api/budget", async (req, res) => {
   try {
@@ -189,7 +179,7 @@ app.post("/api/budget", async (req, res) => {
 
     const budget = new Budget({
       month,
-      amount: amount,
+      amount,
     });
 
     await budget.save();
@@ -219,7 +209,6 @@ app.put("/api/budget", async (req, res) => {
     }
 
     res.json(updated);
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -239,11 +228,10 @@ app.get("/api/expenses/stats", async (req, res) => {
     });
 
     const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
     const expensesCount = expenses.length;
 
     const categoryTotals = {};
-    expenses.forEach(exp => {
+    expenses.forEach((exp) => {
       if (categoryTotals[exp.category]) {
         categoryTotals[exp.category] += exp.amount;
       } else {
@@ -261,11 +249,118 @@ app.get("/api/expenses/stats", async (req, res) => {
       remainingBudget,
       expensesCount,
       categoryTotals,
-      budget: budget ? budget.amount : 0
+      budget: budget ? budget.amount : 0,
     });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/expenses/export-pdf", async (req, res) => {
+  try {
+    const now = new Date();
+    const monthLabel = now.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+    const year = now.getFullYear();
+    const monthIndex = now.getMonth();
+
+    const startOfMonth = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+
+    const expenses = await Expense.find({
+      date: { $gte: startOfMonth, $lt: endOfMonth },
+    }).sort({ date: 1 });
+
+    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    const categoryTotals = {};
+    expenses.forEach((exp) => {
+      if (categoryTotals[exp.category]) {
+        categoryTotals[exp.category] += exp.amount;
+      } else {
+        categoryTotals[exp.category] = exp.amount;
+      }
+    });
+
+    const currentMonthKey = now.toISOString().slice(0, 7);
+    const budget = await Budget.findOne({ month: currentMonthKey });
+    const budgetAmount = budget ? budget.amount : null;
+    const remainingBudget =
+      budgetAmount != null ? budgetAmount - totalSpent : null;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="expenses-${currentMonthKey}.pdf"`
+    );
+
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+
+    doc.fontSize(20).text("Smart Expense Tracker - Monthly Report", {
+      align: "center",
+    });
+    doc.moveDown();
+
+    doc.fontSize(12).text(`Month: ${monthLabel}`);
+    doc.moveDown(0.5);
+
+    doc.fontSize(14).text("Summary");
+    doc.moveDown(0.3);
+    doc.fontSize(12).text(`Total expenses: $${totalSpent.toFixed(2)}`);
+
+    if (budgetAmount != null) {
+      doc.text(`Budget: $${budgetAmount.toFixed(2)}`);
+      doc.text(
+        `Remaining budget: ${
+          remainingBudget != null ? "$" + remainingBudget.toFixed(2) : "-"
+        }`
+      );
+    }
+
+    doc.moveDown(0.5);
+    doc.fontSize(13).text("Totals by Category");
+    doc.moveDown(0.2);
+
+    if (Object.keys(categoryTotals).length === 0) {
+      doc.fontSize(12).text("No expenses this month.");
+    } else {
+      Object.entries(categoryTotals).forEach(([cat, value]) => {
+        doc.fontSize(12).text(`• ${cat}: $${value.toFixed(2)}`);
+      });
+    }
+
+    doc.moveDown(0.8);
+    doc.fontSize(14).text("Detailed Expenses");
+    doc.moveDown(0.3);
+
+    if (expenses.length === 0) {
+      doc.fontSize(12).text("No expenses recorded for this month.");
+    } else {
+      expenses.forEach((exp) => {
+        const dateStr = exp.date.toISOString().slice(0, 10);
+        doc
+          .fontSize(12)
+          .text(
+            `${dateStr} | ${exp.title} | ${exp.category} | $${exp.amount.toFixed(
+              2
+            )}`
+          );
+        if (exp.description) {
+          doc.fontSize(10).text(`  - ${exp.description}`, { indent: 20 });
+        }
+        doc.moveDown(0.2);
+      });
+    }
+
+    doc.end();
+  } catch (err) {
+    console.error("PDF export error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
   }
 });
 
