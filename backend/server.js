@@ -6,7 +6,7 @@ import cors from "cors";
 import PDFDocument from "pdfkit";
 import dotenv from "dotenv";
 
-dotenv.config({ path: "../.env" });
+dotenv.config({ path: ".env" });
 
 const app = express();
 app.use(express.json());
