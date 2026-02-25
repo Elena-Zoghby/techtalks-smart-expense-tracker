@@ -37,7 +37,6 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [manualCategory, setManualCategory] = useState(false);
 
-  // Load theme on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
@@ -46,7 +45,6 @@ export default function Home() {
     }
   }, []);
 
-  // Persist theme
   useEffect(() => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
@@ -62,7 +60,6 @@ export default function Home() {
     setDarkMode((prev) => !prev);
   };
 
-  // Auto-category detection
   const detectCategory = (title: string): string => {
     if (!title.trim()) return "Other";
 
@@ -90,7 +87,6 @@ export default function Home() {
     return bestCategory ?? "Other";
   };
 
-  // Fetch expenses on load
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
@@ -105,7 +101,6 @@ export default function Home() {
     fetchExpenses();
   }, []);
 
-  // Fetch stats when expenses change
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -321,7 +316,6 @@ export default function Home() {
     if (filterMode === "all") setFilterCategory("All");
   }, [filterMode]);
 
-  // ===== Monthly prediction =====
   const getPrediction = () => {
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const today = now.getDate();
@@ -333,40 +327,6 @@ export default function Home() {
   };
 
   const predictedSpending = getPrediction();
-
-  // ===== Spending Trend (This Week vs Last Week) =====
-  const nowDate = new Date();
-
-  const startOfThisWeek = new Date(nowDate);
-  startOfThisWeek.setDate(nowDate.getDate() - nowDate.getDay());
-  startOfThisWeek.setHours(0, 0, 0, 0);
-
-  const startOfLastWeek = new Date(startOfThisWeek);
-  startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
-
-  const endOfLastWeek = new Date(startOfThisWeek);
-  endOfLastWeek.setMilliseconds(-1);
-
-  const thisWeekTotal = expenses
-    .filter((e) => {
-      const d = new Date(e.date);
-      return d >= startOfThisWeek;
-    })
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const lastWeekTotal = expenses
-    .filter((e) => {
-      const d = new Date(e.date);
-      return d >= startOfLastWeek && d <= endOfLastWeek;
-    })
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  let trendPercent = 0;
-  if (lastWeekTotal > 0) {
-    trendPercent = ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100;
-  }
-
-  const trendUp = thisWeekTotal > lastWeekTotal;
 
   const getSuggestion = () => {
     if (predictedSpending === 0)
@@ -409,7 +369,6 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-center mb-8">Smart Expense Tracker</h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left column: Add/Edit form */}
           <div className="lg:w-1/3">
             <div
               className={`rounded-xl shadow-lg p-6 border sticky top-6 ${
@@ -585,9 +544,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right column: Dashboard */}
           <div className="lg:w-2/3 space-y-6">
-            {/* Stats cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div
                 className={`rounded-xl shadow-lg p-6 border ${
@@ -610,16 +567,6 @@ export default function Home() {
                 >
                   ${totalExpenses.toFixed(2)}
                 </p>
-                {lastWeekTotal > 0 && (
-                  <p
-                    className={`text-sm mt-2 font-medium ${
-                      trendUp ? "text-red-500" : "text-green-500"
-                    }`}
-                  >
-                    {trendUp ? "▲" : "▼"}{" "}
-                    {Math.abs(trendPercent).toFixed(0)}% vs last week
-                  </p>
-                )}
               </div>
 
               <div
@@ -711,7 +658,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Budget + prediction */}
             <div
               className={`rounded-xl shadow-lg p-6 border ${
                 darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
@@ -766,7 +712,6 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Chart + Search/Filter */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div
                 className={`rounded-xl shadow-lg p-6 border ${
@@ -913,7 +858,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Expense list + export PDF */}
             <div
               className={`rounded-xl shadow-lg p-6 border ${
                 darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
