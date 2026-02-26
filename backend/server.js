@@ -4,9 +4,8 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import express from 'express';
 import cors from "cors";
-
 import path from 'path'; 
-
+import PDFDocument from 'pdfkit';
 const app = express();
 app.use(express.json());
 app.use(cors({
@@ -225,7 +224,6 @@ app.put("/api/budget", async (req, res) => {
   }
 });
 
-const PDFDocument = require('pdfkit');
 
 app.get('/api/expenses/export-pdf', async (req, res) => {
   try {
