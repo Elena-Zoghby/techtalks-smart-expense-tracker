@@ -227,31 +227,64 @@ app.put("/api/budget", async (req, res) => {
 
 app.get('/api/expenses/export-pdf', async (req, res) => {
   try {
-    
-    const expenses = await Expense.find();
-    const doc = new PDFDocument({ margin: 50 });
+    const expenses = await Expense.find(); // Fetch your data
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=ExpenseReport.pdf');
-
     doc.pipe(res);
-
-    doc.fontSize(20).text('Monthly Expense Report', { align: 'center' });
+    doc.fillColor("#444444").fontSize(20).text("Smart Expense Tracker", 50, 50);
+    doc.fontSize(10).text(`Report Date: ${new Date().toLocaleDateString()}`, 50, 80, { align: 'right' });
     doc.moveDown();
-    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
-    doc.text('----------------------------------------------');
-    doc.moveDown();
+    doc.moveTo(50, 100).lineTo(550, 100).stroke(); // Horizontal line
 
-    expenses.forEach((exp, i) => {
-      doc.text(`${i + 1}. ${exp.title} - $${exp.amount} [${exp.category}] (${exp.date})`);
-      doc.moveDown(0.5);
+    //table headers
+    const tableTop = 130;
+    const itemCodeX = 50;
+    const descriptionX = 100;
+    const categoryX = 300;
+    const amountX = 450;
+
+    doc.fontSize(10).font("Helvetica-Bold");
+    doc.text("Date", itemCodeX, tableTop);
+    doc.text("Description", descriptionX, tableTop);
+    doc.text("Category", categoryX, tableTop);
+    doc.text("Amount", amountX, tableTop, { width: 90, align: "right" });
+    
+    doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+
+    //rows
+    let currentY = tableTop + 25;
+    doc.font("Helvetica");
+
+    expenses.forEach((exp) => {
+      // If we run out of space on the page, add a new one
+      if (currentY > 750) {
+        doc.addPage();
+        currentY = 50; 
+      }
+
+      doc.fontSize(10)
+         .text(new Date(exp.date).toLocaleDateString(), itemCodeX, currentY)
+         .text(exp.title, descriptionX, currentY)
+         .text(exp.category, categoryX, currentY)
+         .text(`$${exp.amount.toFixed(2)}`, amountX, currentY, { width: 90, align: "right" });
+
+      currentY += 20; //row height
     });
 
-    doc.end();
+    //summary (total)
+    const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    doc.moveTo(50, currentY + 10).lineTo(550, currentY + 10).stroke();
+    
+    doc.fontSize(12).font("Helvetica-Bold")
+       .text("Total Spending:", categoryX, currentY + 25)
+       .text(`$${total.toFixed(2)}`, amountX, currentY + 25, { width: 90, align: "right" });
 
+    doc.end();
   } catch (error) {
-    console.error("PDF Error:", error);
-    res.status(500).send("Error generating PDF");
+    console.error(error);
+    res.status(500).send("Error generating organized PDF");
   }
 });
 
