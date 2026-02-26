@@ -355,7 +355,29 @@ const getSuggestion = () => {
   return "Great job! You're currently on track to stay within your budget.";
 };
 
-
+//export to pdf
+const handleExportPdf = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/expenses/export-pdf`);
+    
+    if (!res.ok) throw new Error("Backend failed to produce PDF");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Expenses_${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    
+    //remove to save memory
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Export failed. Is the backend server running?");
+  }
+};
   return (
     <div
       className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-gray-50 text-gray-900"
@@ -926,6 +948,12 @@ const getSuggestion = () => {
                   ))}
                 </div>
               )}
+              <button
+                onClick={handleExportPdf}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Export PDF
+              </button>
             </div>
           </div>
         </div>

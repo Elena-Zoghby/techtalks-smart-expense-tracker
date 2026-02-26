@@ -225,6 +225,38 @@ app.put("/api/budget", async (req, res) => {
   }
 });
 
+const PDFDocument = require('pdfkit');
+
+app.get('/api/expenses/export-pdf', async (req, res) => {
+  try {
+    
+    const expenses = await Expense.find();
+    const doc = new PDFDocument({ margin: 50 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=ExpenseReport.pdf');
+
+    doc.pipe(res);
+
+    doc.fontSize(20).text('Monthly Expense Report', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
+    doc.text('----------------------------------------------');
+    doc.moveDown();
+
+    expenses.forEach((exp, i) => {
+      doc.text(`${i + 1}. ${exp.title} - $${exp.amount} [${exp.category}] (${exp.date})`);
+      doc.moveDown(0.5);
+    });
+
+    doc.end();
+
+  } catch (error) {
+    console.error("PDF Error:", error);
+    res.status(500).send("Error generating PDF");
+  }
+});
+
 app.get("/api/expenses/stats", async (req, res) => {
   try {
     const startOfMonth = new Date();
