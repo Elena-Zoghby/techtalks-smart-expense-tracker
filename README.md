@@ -28,7 +28,7 @@ Many people track expenses manually or not at all, making it hard to understand 
 To run this project on your machine:
 
 1. **Clone the Repo:**
-   `git clone [Your-Repo-Link]`
+   `git clone (https://github.com/Elena-Zoghby/techtalks-smart-expense-tracker)`
 
 2. **Install Dependencies:**
    Run `npm install` in the root and `/backend` folders.
