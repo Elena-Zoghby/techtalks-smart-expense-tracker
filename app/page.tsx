@@ -14,7 +14,7 @@ type Expense = {
 
 const categories = ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Other"];
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AA00FF", "#FF3366"];
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);

@@ -8,9 +8,7 @@ import path from 'path';
 import PDFDocument from 'pdfkit';
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: "http://localhost:3000"
-}));
+app.use(cors({ origin: '*' }));
 
 
 const port = 3001;
