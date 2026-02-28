@@ -5,14 +5,6 @@ Smart Expense Tracker is a full-stack web application that helps users track the
 # Problem
 Many people track expenses manually or not at all, making it hard to understand where their money goes or manage a monthly budget.
 
-# Main Features (Planned)
-- Add daily expenses (amount, category, date)
-- View expenses by category
-- Monthly expense summary
-- Charts and visual reports
-- Multi-currency support (LBP / USD)
-- (Later) AI-based budgeting suggestions
-
 # Team Leader
 - Elena Zoghby
 # Team Members
@@ -26,3 +18,24 @@ Many people track expenses manually or not at all, making it hard to understand 
 - Backend: Node.js (API routes / Express)
 - Database: MongoDB (or PostgreSQL)
 - Tools: GitHub, Postman, Notion, VS Code
+
+## Features
+- **PDF Export:** Custom backend engine to generate organized expense reports.
+- **Dynamic Charts:** Visual spending breakdown by category.
+- **Smart Logic:** Keyword-based auto-categorization for new entries.
+
+## Local Setup (Lead Developer Guide)
+To run this project on your machine:
+
+1. **Clone the Repo:**
+   `git clone [Your-Repo-Link]`
+
+2. **Install Dependencies:**
+   Run `npm install` in the root and `/backend` folders.
+
+3. **Configure Environment:**
+   Create a `.env` file in the root and add your `DATABASE_URL`.
+
+4. **Start the Engine:**
+   - Backend: `node backend/server.js`
+   - Frontend: `npm run dev`
