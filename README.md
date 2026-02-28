@@ -1,4 +1,4 @@
-# techtalks-smart-expense-tracker
+#Smart-Expense-Tracker
 
 Smart Expense Tracker is a full-stack web application that helps users track their daily expenses, categorize spending, and visualize their financial habits through charts and monthly reports.
 
