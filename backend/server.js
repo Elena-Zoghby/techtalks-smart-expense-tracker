@@ -30,6 +30,7 @@ if (!mongoURI) {
     .catch((err) => console.error("❌ ERROR: Connection failed:", err));
 }
 
+
 app.get('/health', (req, res) => { 
   res.send({ status: 'Server is running!' });
 });
@@ -165,7 +166,11 @@ app.delete('/expenses/:id', async (req, res) => {
 
 app.get("/api/budget", async (req, res) => {
   try {
-    const month = new Date().toISOString().slice(0, 7);
+    // This forces the date to be calculated based on a 2 or 3 hour offset
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000; 
+      const localISOTime = new Date(now - offset).toISOString().slice(0, 7);
+      const month = localISOTime;
     const budget = await Budget.findOne({ month });
     res.json(budget);
   } catch (err) {
@@ -175,7 +180,11 @@ app.get("/api/budget", async (req, res) => {
 
 app.post("/api/budget", async (req, res) => {
   try {
-    const month = new Date().toISOString().slice(0, 7);
+    // This forces the date to be calculated based on a 2 or 3 hour offset
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000; 
+      const localISOTime = new Date(now - offset).toISOString().slice(0, 7);
+      const month = localISOTime;
 
     const existing = await Budget.findOne({ month });
     if (existing) {
@@ -202,7 +211,11 @@ app.post("/api/budget", async (req, res) => {
 
 app.put("/api/budget", async (req, res) => {
   try {
-    const month = new Date().toISOString().slice(0, 7);
+    // This forces the date to be calculated based on a 2 or 3 hour offset
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000; 
+      const localISOTime = new Date(now - offset).toISOString().slice(0, 7);
+      const month = localISOTime;
     const amount = Number(req.body.amount);
 
     if (!amount || amount <= 0) {
@@ -316,7 +329,11 @@ app.get("/api/expenses/stats", async (req, res) => {
       }
     });
 
-    const month = new Date().toISOString().slice(0, 7);
+    // This forces the date to be calculated based on a 2 or 3 hour offset
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000; 
+      const localISOTime = new Date(now - offset).toISOString().slice(0, 7);
+      const month = localISOTime;
     const budget = await Budget.findOne({ month });
 
     const remainingBudget = budget ? budget.amount - totalSpent : null;
